@@ -1,0 +1,2403 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard de Produção</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3b82f6',
+            secondary: '#1e293b',
+            accent: '#f59e0b',
+            success: '#10b981',
+            danger: '#ef4444',
+            dark: '#0f172a',
+            purple: '#8b5cf6',
+            pink: '#ec4899',
+            teal: '#14b8a6',
+            orange: '#f97316',
+            indigo: '#6366f1',
+            cyan: '#06b6d4',
+            lime: '#84cc16',
+            amber: '#f59e0b',
+            emerald: '#10b981',
+            rose: '#f43f5e',
+            violet: '#8b5cf6'
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s infinite',
+            'bounce-slow': 'bounce 2s infinite',
+            'fade-in': 'fadeIn 0.5s ease-in-out',
+            'slide-in': 'slideIn 0.5s ease-out'
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' }
+            },
+            slideIn: {
+              '0%': { transform: 'translateY(-10px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .gradient-bg {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+    
+    .card-hover {
+      transition: all 0.3s ease;
+    }
+    
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+    
+    .chart-filter.active {
+      background-color: #3b82f6;
+      color: white;
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+    
+    .tab-button {
+      transition: all 0.3s ease;
+    }
+    
+    .tab-button.active {
+      background-color: #3b82f6;
+      color: white;
+    }
+    
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      flex-direction: column;
+    }
+    
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      color: white;
+      z-index: 1001;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+    
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    
+    .toast.success {
+      background-color: #10b981;
+    }
+    
+    .toast.error {
+      background-color: #ef4444;
+    }
+    
+    .toast.warning {
+      background-color: #f59e0b;
+    }
+    
+    /* Estilos para dispositivos móveis */
+    @media (max-width: 768px) {
+      .chart-container {
+        height: 250px;
+      }
+      
+      .mobile-menu {
+        transition: all 0.3s ease;
+        max-height: 0;
+        overflow: hidden;
+      }
+      
+      .mobile-menu.open {
+        max-height: 300px;
+      }
+      
+      .card-content {
+        padding: 1rem;
+      }
+      
+      .table-responsive {
+        font-size: 0.875rem;
+      }
+      
+      .table-responsive th,
+      .table-responsive td {
+        padding: 0.5rem;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .chart-container {
+        height: 200px;
+      }
+      
+      .card-content {
+        padding: 0.75rem;
+      }
+      
+      .mobile-hidden {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary mb-4"></div>
+    <p id="loading-text" class="text-lg">Carregando dados...</p>
+  </div>
+  
+  <!-- Toast Notifications -->
+  <div id="toast" class="toast"></div>
+  
+  <!-- Header -->
+  <header class="bg-dark p-4 border-b border-gray-800">
+    <div class="flex items-center justify-between max-w-7xl mx-auto">
+      <div class="flex items-center">
+        <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center mr-3">
+          <i class="fas fa-industry"></i>
+        </div>
+        <h1 class="text-xl md:text-2xl font-bold">Dashboard de Produção</h1>
+        <span id="status-indicator" class="ml-3 text-xs bg-success/20 text-success px-2 py-1 rounded-full hidden">
+          <i class="fas fa-circle mr-1"></i>Conectado
+        </span>
+      </div>
+      
+      <!-- Menu para desktop -->
+      <div class="hidden md:flex items-center space-x-4">
+        <button onclick="toggleFullScreen()"
+          class="p-2 rounded-full bg-success hover:bg-green-600 transition-colors">
+          <span class="mobile-hidden">Tela Cheia</span>
+          <i class="fas fa-expand ml-1"></i>
+        </button>
+
+        <button id="refresh-btn" class="p-2 rounded-full bg-primary hover:bg-blue-600 transition-colors">
+          <i class="fas fa-sync-alt"></i>
+        </button>
+        
+        <button id="export-btn" class="p-2 rounded-full bg-success hover:bg-green-600 transition-colors" title="Exportar dados">
+          <i class="fas fa-download"></i>
+        </button>
+      </div>
+      
+      <!-- Menu hamburguer para mobile -->
+      <div class="md:hidden flex items-center">
+        <button id="mobile-menu-button" class="p-2 rounded-full bg-primary hover:bg-blue-600 transition-colors">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Menu móvel expandido -->
+    <div id="mobile-menu" class="mobile-menu md:hidden mt-4 bg-gray-800 rounded-lg">
+      <div class="flex flex-col space-y-2 p-4">
+        <button onclick="toggleFullScreen()"
+          class="flex items-center justify-center p-2 rounded-lg bg-success hover:bg-green-600 transition-colors">
+          <i class="fas fa-expand mr-2"></i>
+          <span>Tela Cheia</span>
+        </button>
+
+        <button id="refresh-btn-mobile" class="flex items-center justify-center p-2 rounded-lg bg-primary hover:bg-blue-600 transition-colors">
+          <i class="fas fa-sync-alt mr-2"></i>
+          <span>Atualizar</span>
+        </button>
+        
+        <button id="export-btn-mobile" class="flex items-center justify-center p-2 rounded-lg bg-success hover:bg-green-600 transition-colors">
+          <i class="fas fa-download mr-2"></i>
+          <span>Exportar</span>
+        </button>
+      </div>
+    </div>
+  </header>
+  
+  <!-- Conteúdo -->
+  <main class="p-3 md:p-6 max-w-9xl mx-auto">
+    <!-- Cards de Indicadores -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6 md:mb-8">
+      <div class="bg-gradient-to-r from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg card-hover">
+        <div class="flex justify-between items-start">
+          <div>
+            <h2 class="text-base md:text-lg font-semibold text-gray-300">Qtd em Atraso</h2>
+            <p id="qtdAtraso" class="text-2xl md:text-3xl font-bold mt-2 animate-pulse">--</p>
+          </div>
+          <div class="bg-danger/20 p-2 md:p-3 rounded-full">
+            <i class="fas fa-exclamation-triangle text-danger text-lg md:text-xl"></i>
+          </div>
+        </div>
+        <div class="mt-3 md:mt-4 flex items-center">
+          <span id="atraso-trend" class="text-xs md:text-sm font-medium"></span>
+          <span id="atraso-change" class="text-xs md:text-sm ml-2"></span>
+        </div>
+      </div>
+      
+      <div class="bg-gradient-to-r from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg card-hover">
+        <div class="flex justify-between items-start">
+          <div>
+            <h2 class="text-base md:text-lg font-semibold text-gray-300">Aderência</h2>
+            <p id="aderencia" class="text-2xl md:text-3xl font-bold mt-2 animate-pulse">--</p>
+          </div>
+          <div class="bg-success/20 p-2 md:p-3 rounded-full">
+            <i class="fas fa-chart-line text-success text-lg md:text-xl"></i>
+          </div>
+        </div>
+        <div class="mt-3 md:mt-4">
+          <div class="w-full bg-gray-700 rounded-full h-2">
+            <div id="aderencia-bar" class="bg-success h-2 rounded-full" style="width: 0%"></div>
+          </div>
+          <div class="mt-2 flex items-center">
+            <span id="aderencia-trend" class="text-xs md:text-sm font-medium"></span>
+            <span id="aderencia-change" class="text-xs md:text-sm ml-2"></span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-gradient-to-r from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg card-hover">
+        <div class="flex justify-between items-start">
+          <div>
+            <h2 class="text-base md:text-lg font-semibold text-gray-300">Marcas</h2>
+            <p id="total-marcas" class="text-2xl md:text-3xl font-bold mt-2">--</p>
+          </div>
+          <div class="bg-purple/20 p-2 md:p-3 rounded-full">
+            <i class="fas fa-tags text-purple text-lg md:text-xl"></i>
+          </div>
+        </div>
+        <div class="mt-3 md:mt-4">
+          <p class="text-xs md:text-sm text-gray-400">Ativas no período</p>
+        </div>
+      </div>
+
+      <!-- Novo Card: Maior Atraso por Marca -->
+      <div class="bg-gradient-to-r from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg card-hover">
+        <div class="flex justify-between items-start">
+          <div>
+            <h2 class="text-base md:text-lg font-semibold text-gray-300">Maior Atraso (Marca)</h2>
+            <p id="maior-atraso-marca" class="text-2xl md:text-3xl font-bold mt-2">--</p>
+          </div>
+          <div class="bg-danger/20 p-2 md:p-3 rounded-full">
+            <i class="fas fa-arrow-up text-danger text-lg md:text-xl"></i>
+          </div>
+        </div>
+        <div class="mt-3 md:mt-4">
+          <p id="maior-atraso-marca-nome" class="text-xs md:text-sm text-gray-400">--</p>
+        </div>
+      </div>
+
+      <!-- Novo Card: Menor Atraso por Marca -->
+      <div class="bg-gradient-to-r from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg card-hover">
+        <div class="flex justify-between items-start">
+          <div>
+            <h2 class="text-base md:text-lg font-semibold text-gray-300">Menor Atraso (Marca)</h2>
+            <p id="menor-atraso-marca" class="text-2xl md:text-3xl font-bold mt-2">--</p>
+          </div>
+          <div class="bg-success/20 p-2 md:p-3 rounded-full">
+            <i class="fas fa-arrow-down text-success text-lg md:text-xl"></i>
+          </div>
+        </div>
+        <div class="mt-3 md:mt-4">
+          <p id="menor-atraso-marca-nome" class="text-xs md:text-sm text-gray-400">--</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros por Semana, Mês e Data Específica -->
+    <div class="mb-6 bg-gradient-to-br from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg">
+      <div class="flex flex-col md:flex-row md:items-center gap-4">
+        <h3 class="text-base md:text-lg font-semibold">Filtros:</h3>
+        <div class="flex flex-col md:flex-row gap-4">
+          <!-- Filtro de Semana -->
+          <div class="flex items-center">
+            <label for="filtro-semana-geral" class="text-sm mr-2">Semana:</label>
+            <select id="filtro-semana-geral" class="bg-gray-700 text-white rounded-lg px-3 py-2 text-sm">
+              <option value="all">Todas as Semanas</option>
+              <!-- Opções serão preenchidas via JavaScript -->
+            </select>
+          </div>
+          
+          <!-- Filtro de Mês -->
+          <div class="flex items-center">
+            <label for="filtro-mes" class="text-sm mr-2">Mês:</label>
+            <select id="filtro-mes" class="bg-gray-700 text-white rounded-lg px-3 py-2 text-sm">
+              <option value="all">Todos os Meses</option>
+              <option value="1">Janeiro</option>
+              <option value="2">Fevereiro</option>
+              <option value="3">Março</option>
+              <option value="4">Abril</option>
+              <option value="5">Maio</option>
+              <option value="6">Junho</option>
+              <option value="7">Julho</option>
+              <option value="8">Agosto</option>
+              <option value="9">Setembro</option>
+              <option value="10">Outubro</option>
+              <option value="11">Novembro</option>
+              <option value="12">Dezembro</option>
+            </select>
+          </div>
+          
+          <!-- Novo Filtro: A partir de data específica -->
+          <div class="flex items-center">
+            <label for="filtro-data-especifica" class="text-sm mr-2">A partir de:</label>
+            <input type="date" id="filtro-data-especifica" class="bg-gray-700 text-white rounded-lg px-3 py-2 text-sm">
+          </div>
+          
+          <!-- Botão Aplicar Filtros -->
+          <button id="aplicar-filtros" class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+            Aplicar Filtros
+          </button>
+          
+          <!-- Botão Limpar Filtros -->
+          <button id="limpar-filtros" class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+            Limpar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Abas para diferentes visualizações -->
+    <div class="mb-4 md:mb-6">
+      <div class="flex overflow-x-auto space-x-1 md:space-x-2 border-b border-gray-700 pb-1">
+        <button class="tab-button active px-3 py-2 text-sm md:text-base md:px-4 md:py-2 rounded-t-lg whitespace-nowrap" data-tab="visao-geral">
+          <i class="fas fa-chart-bar mr-1 md:mr-2"></i>Visão Geral
+        </button>
+        <button class="tab-button px-3 py-2 text-sm md:text-base md:px-4 md:py-2 rounded-t-lg bg-gray-800 hover:bg-gray-700 whitespace-nowrap" data-tab="detalhamento">
+          <i class="fas fa-table mr-1 md:mr-2"></i>Detalhamento
+        </button>
+        <button class="tab-button px-3 py-2 text-sm md:text-base md:px-4 md:py-2 rounded-t-lg bg-gray-800 hover:bg-gray-700 whitespace-nowrap" data-tab="analise-temporal">
+          <i class="fas fa-calendar-alt mr-1 md:mr-2"></i>Análise Temporal
+        </button>
+      </div>
+    </div>
+    
+    <!-- Conteúdo das Abas -->
+    <div id="visao-geral" class="tab-content active">
+      <!-- Gráficos Principais -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-8">
+        <!-- Evolução da Aderência (%) com Painel de Análise -->
+        <div class="bg-gradient-to-br from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg animate-fade-in">
+          <!-- Painel de Análise Dinâmica para Evolução da Aderência -->
+          <div class="mb-4 md:mb-6 p-4 bg-gray-700/50 rounded-xl">
+            <h3 class="text-sm md:text-base font-semibold mb-2 text-gray-300">Análise de Evolução da Aderência</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Melhor Semana</p>
+                <p id="melhor-semana" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Pior Semana</p>
+                <p id="pior-semana" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Tendência</p>
+                <p id="tendencia-aderencia" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Variação</p>
+                <p id="variacao-aderencia" class="text-sm md:text-base font-bold">--</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 md:mb-6">
+            <h2 class="text-base md:text-lg font-semibold mb-2 md:mb-0">Evolução da Aderência (%)</h2>
+          </div>
+          <div class="chart-container">
+            <canvas id="aderenciaChart"></canvas>
+          </div>
+        </div>
+        
+        <!-- Qtd em Atraso por Semana com Painel de Análise -->
+        <div class="bg-gradient-to-br from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg animate-fade-in">
+          <!-- Painel de Análise Dinâmica para Atraso por Semana -->
+          <div class="mb-4 md:mb-6 p-4 bg-gray-700/50 rounded-xl">
+            <h3 class="text-sm md:text-base font-semibold mb-2 text-gray-300">Análise de Atraso por Semana</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Total Período</p>
+                <p id="total-atraso-periodo" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Maior Atraso</p>
+                <p id="maior-atraso-semana" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Menor Atraso</p>
+                <p id="menor-atraso-semana" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Tendência</p>
+                <p id="tendencia-atraso" class="text-sm md:text-base font-bold">--</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 md:mb-6">
+            <h2 class="text-base md:text-lg font-semibold mb-2 md:mb-0">Qtd em Atraso por Semana</h2>
+          </div>
+          <div class="chart-container">
+            <canvas id="atrasoChart"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Novos Gráficos Adicionados -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-8">
+        <!-- Aderência por Marca com Painel de Análise -->
+        <div class="bg-gradient-to-br from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg animate-fade-in">
+          <!-- Painel de Análise -->
+          <div class="mb-4 md:mb-6 p-4 bg-gray-700/50 rounded-xl">
+            <h3 class="text-sm md:text-base font-semibold mb-2 text-gray-300">Análise de Aderência por Marca</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Média Geral</p>
+                <p id="media-aderencia-marca" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Melhor Marca</p>
+                <p id="melhor-marca" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Pior Marca</p>
+                <p id="pior-marca" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">% Meta Atingida</p>
+                <p id="meta-atingida-marca" class="text-sm md:text-base font-bold">--</p>
+              </div>
+            </div>
+            <!-- Top 3 Marcas com Detalhes -->
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4" id="top-marcas">
+              <!-- As top 3 marcas serão inseridas aqui -->
+            </div>
+          </div>
+          
+          <div class="flex justify-between items-center mb-4 md:mb-6">
+            <h2 class="text-base md:text-lg font-semibold">Aderência por Marca</h2>
+          </div>
+          <div class="chart-container">
+            <canvas id="marcaChart"></canvas>
+          </div>
+        </div>
+        
+        <!-- Atraso por Marca com Painel de Análise (antigo Atraso por Centro de Trabalho) -->
+        <div class="bg-gradient-to-br from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg animate-fade-in">
+          <!-- Painel de Análise -->
+          <div class="mb-4 md:mb-6 p-4 bg-gray-700/50 rounded-xl">
+            <h3 class="text-sm md:text-base font-semibold mb-2 text-gray-300">Análise de Atraso por Marca</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Total Atraso</p>
+                <p id="total-atraso-marca" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Maior Atraso</p>
+                <p id="maior-atraso-marca-analise" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Menor Atraso</p>
+                <p id="menor-atraso-marca-analise" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Variação</p>
+                <p id="variacao-atraso-marca" class="text-sm md:text-base font-bold">--</p>
+              </div>
+            </div>
+            <!-- Detalhamento por Marca -->
+            <div class="mt-4" id="detalhes-marcas-atraso">
+              <!-- Detalhes das marcas serão inseridos aqui -->
+            </div>
+          </div>
+          
+          <div class="flex justify-between items-center mb-4 md:mb-6">
+            <h2 class="text-base md:text-lg font-semibold">Atraso por Marca</h2>
+          </div>
+          <div class="chart-container">
+            <canvas id="marcaAtrasoChart"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-8">
+        <!-- Performance por Recurso com Painel de Análise -->
+        <div class="bg-gradient-to-br from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg animate-fade-in">
+          <!-- Painel de Análise para Performance por Recurso -->
+          <div class="mb-4 md:mb-6 p-4 bg-gray-700/50 rounded-xl">
+            <h3 class="text-sm md:text-base font-semibold mb-2 text-gray-300">Análise de Performance por Recurso</h3>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Melhor Recurso</p>
+                <p id="melhor-recurso" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Pior Recurso</p>
+                <p id="pior-recurso" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Variação</p>
+                <p id="variacao-recurso" class="text-sm md:text-base font-bold">--</p>
+              </div>
+            </div>
+            <!-- Detalhamento por Recurso -->
+            <div class="mt-4" id="detalhes-recursos">
+              <!-- Detalhes dos recursos serão inseridos aqui -->
+            </div>
+          </div>
+          
+          <div class="flex justify-between items-center mb-4 md:mb-6">
+            <h2 class="text-base md:text-lg font-semibold">Performance por Recurso</h2>
+          </div>
+          <div class="chart-container">
+            <canvas id="recursoChart"></canvas>
+          </div>
+        </div>
+        
+        <!-- NOVO: Gráfico de Pizza - Distribuição por Marca e Semana -->
+        <div class="bg-gradient-to-br from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg animate-fade-in">
+          <!-- Painel de Análise para o Gráfico de Pizza -->
+          <div class="mb-4 md:mb-6 p-4 bg-gray-700/50 rounded-xl">
+            <h3 class="text-sm md:text-base font-semibold mb-2 text-gray-300">Análise de Distribuição por Marca</h3>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Marca Líder</p>
+                <p id="marca-lider" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Participação</p>
+                <p id="participacao-lider" class="text-sm md:text-base font-bold">--</p>
+              </div>
+              <div class="bg-gray-800/50 p-2 rounded-lg">
+                <p class="text-xs text-gray-400">Total Itens</p>
+                <p id="total-itens" class="text-sm md:text-base font-bold">--</p>
+              </div>
+            </div>
+            <!-- Top 3 Marcas por Quantidade -->
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-4" id="top-marcas-quantidade">
+              <!-- As top 3 marcas por quantidade serão inseridas aqui -->
+            </div>
+          </div>
+          
+          <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 md:mb-6">
+            <h2 class="text-base md:text-lg font-semibold mb-2 md:mb-0">Distribuição por Marca e Semana</h2>
+            <div class="flex items-center">
+              <label for="filtro-semana-pizza" class="text-sm mr-2">Semana:</label>
+              <select id="filtro-semana-pizza" class="bg-gray-700 text-white rounded-lg px-3 py-2 text-sm">
+                <option value="all">Todas as Semanas</option>
+                <!-- Opções serão preenchidas via JavaScript -->
+              </select>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="pizzaChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="detalhamento" class="tab-content hidden">
+      <!-- Tabela de Detalhes -->
+      <div class="bg-gradient-to-br from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg animate-slide-in">
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 md:mb-6">
+          <h2 class="text-base md:text-lg font-semibold mb-2 md:mb-0">Detalhamento por Semana</h2>
+          <div class="flex flex-col md:flex-row gap-2 md:gap-4">
+            <button id="export-table-btn" class="text-primary text-sm font-medium flex items-center justify-center md:justify-start">
+              <span>Exportar Dados</span>
+              <i class="fas fa-download ml-2"></i>
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto table-responsive">
+          <table class="min-w-full divide-y divide-gray-700">
+            <thead>
+              <tr>
+                <th class="px-2 md:px-4 py-2 md:py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Semana</th>
+                <th class="px-2 md:px-4 py-2 md:py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Marca</th>
+                <th class="px-2 md:px-4 py-2 md:py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Centro de Trabalho</th>
+                <th class="px-2 md:px-4 py-2 md:py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Recurso</th>
+                <th class="px-2 md:px-4 py-2 md:py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Qtd em Atraso</th>
+                <th class="px-2 md:px-4 py-2 md:py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Aderência</th>
+                <th class="px-2 md:px-4 py-2 md:py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Data</th>
+              </tr>
+            </thead>
+            <tbody id="detalhes-table" class="divide-y divide-gray-700">
+              <!-- Dados serão preenchidos via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <div id="analise-temporal" class="tab-content hidden">
+      <div class="bg-gradient-to-br from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg animate-slide-in">
+        <!-- Painel de Análise para Análise Temporal -->
+        <div class="mb-4 md:mb-6 p-4 bg-gray-700/50 rounded-xl">
+          <h3 class="text-sm md:text-base font-semibold mb-2 text-gray-300">Análise Temporal Detalhada</h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+            <div class="bg-gray-800/50 p-2 rounded-lg">
+              <p class="text-xs text-gray-400">Correlação</p>
+              <p id="correlacao-temporal" class="text-sm md:text-base font-bold">--</p>
+            </div>
+            <div class="bg-gray-800/50 p-2 rounded-lg">
+              <p class="text-xs text-gray-400">Melhor Período</p>
+              <p id="melhor-periodo" class="text-sm md:text-base font-bold">--</p>
+            </div>
+            <div class="bg-gray-800/50 p-2 rounded-lg">
+              <p class="text-xs text-gray-400">Pior Período</p>
+              <p id="pior-periodo" class="text-sm md:text-base font-bold">--</p>
+            </div>
+            <div class="bg-gray-800/50 p-2 rounded-lg">
+              <p class="text-xs text-gray-400">Tendência</p>
+              <p id="tendencia-temporal" class="text-sm md:text-base font-bold">--</p>
+            </div>
+          </div>
+        </div>
+        
+        <h2 class="text-base md:text-lg font-semibold mb-4 md:mb-6">Análise Temporal Detalhada</h2>
+        <div class="chart-container" style="height: 350px;">
+          <canvas id="analiseTemporalChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </main>
+
+<script>
+ // ========== CONFIGURAÇÕES E CONSTANTES ==========
+    const API_URL = "https://script.google.com/macros/s/AKfycbwqlXB7tSHtvMrTDGVqAxjD3ue-JiX7aPS4ESc0ObnZI5Qfq6HfuXBOO-3dIjdtdr-CMw/exec";
+    const CACHE_KEY = 'dashboard_producao_cache';
+    const CACHE_DURATION = 30 * 60 * 1000; // 30 minutos em milissegundos
+    
+    // ========== ELEMENTOS DOM ==========
+    const refreshBtn = document.getElementById('refresh-btn');
+    const refreshBtnMobile = document.getElementById('refresh-btn-mobile');
+    const exportBtn = document.getElementById('export-btn');
+    const exportBtnMobile = document.getElementById('export-btn-mobile');
+    const exportTableBtn = document.getElementById('export-table-btn');
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const loadingText = document.getElementById('loading-text');
+    const toast = document.getElementById('toast');
+    const statusIndicator = document.getElementById('status-indicator');
+    const mobileMenuButton = document.getElementById('mobile-menu-button');
+    const mobileMenu = document.getElementById('mobile-menu');
+    const filtroSemanaGeral = document.getElementById('filtro-semana-geral');
+    const filtroMes = document.getElementById('filtro-mes');
+    const filtroDataEspecifica = document.getElementById('filtro-data-especifica');
+    const aplicarFiltrosBtn = document.getElementById('aplicar-filtros');
+    const limparFiltrosBtn = document.getElementById('limpar-filtros');
+    
+    // ========== ESTADO DA APLICAÇÃO ==========
+    let dados = [];
+    let dadosFiltrados = [];
+    let aderenciaChart, atrasoChart, marcaChart, marcaAtrasoChart, recursoChart, analiseTemporalChart, pizzaChart;
+    let isOnline = true;
+    let lastUpdateTime = null;
+    let isMobileMenuOpen = false;
+    
+    // ========== PALETA DE CORES EXPANDIDA PARA MARCAS ==========
+    const paletaCores = [
+      '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+      '#ec4899', '#f97316', '#6366f1', '#06b6d4', '#84cc16',
+      '#f43f5e', '#8b5cf6', '#3b82f6', '#ef4444', '#10b981',
+      '#f59e0b', '#8b5cf6', '#ec4899', '#f97316', '#6366f1'
+    ];
+    
+    // Mapeamento de cores para marcas específicas
+    const coresMarcas = {
+      'NIKE': '#3b82f6',           // Azul
+      'ADIDAS': '#ef4444',         // Vermelho
+      'PUMA': '#10b981',           // Verde
+      'UMBRO': '#ec4899',          // Rosa
+      'REEBOK': '#8b5cf6',         // Roxo
+      'UNDER ARMOUR': '#f59e0b',   // Laranja
+      'NEW BALANCE': '#f97316',    // Laranja escuro
+      'CONVERSE': '#6366f1',       // Índigo
+      'VANS': '#06b6d4',           // Ciano
+      'FILA': '#84cc16',           // Lima
+      'ASICS': '#f43f5e',          // Rosa escuro
+      'MIZUNO': '#8b5cf6',         // Violeta
+      'SKECHERS': '#3b82f6',       // Azul
+      'BROOKS': '#ef4444',         // Vermelho
+      'SAUCONY': '#10b981',        // Verde
+      'HOKA': '#f59e0b',           // Amarelo
+      'ON': '#8b5cf6',             // Roxo
+      'ALTRA': '#ec4899',          // Rosa
+      'SALOMON': '#f97316',        // Laranja
+      'MERRELL': '#6366f1'         // Índigo
+    };
+    
+    // ========== FUNÇÕES DE RESPONSIVIDADE ==========
+    
+    // Alternar menu móvel
+    function toggleMobileMenu() {
+      isMobileMenuOpen = !isMobileMenuOpen;
+      if (isMobileMenuOpen) {
+        mobileMenu.classList.add('open');
+      } else {
+        mobileMenu.classList.remove('open');
+      }
+    }
+    
+    // Fechar menu móvel ao clicar fora
+    document.addEventListener('click', (event) => {
+      if (isMobileMenuOpen && 
+          !mobileMenu.contains(event.target) && 
+          !mobileMenuButton.contains(event.target)) {
+        toggleMobileMenu();
+      }
+    });
+    
+    // Ajustar gráficos ao redimensionar a tela
+    window.addEventListener('resize', () => {
+      // Recalcular e redesenhar gráficos
+      if (aderenciaChart) aderenciaChart.resize();
+      if (atrasoChart) atrasoChart.resize();
+      if (marcaChart) marcaChart.resize();
+      if (marcaAtrasoChart) marcaAtrasoChart.resize();
+      if (recursoChart) recursoChart.resize();
+      if (analiseTemporalChart) analiseTemporalChart.resize();
+      if (pizzaChart) pizzaChart.resize();
+    });
+    
+    // ========== SISTEMA DE CACHE/REDUNDÂNCIA ==========
+    
+    // Salvar dados no localStorage
+    function salvarCache(dados) {
+      try {
+        const cacheData = {
+          dados: dados,
+          timestamp: Date.now()
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+        console.log('Dados salvos no cache');
+      } catch (error) {
+        console.error('Erro ao salvar cache:', error);
+      }
+    }
+    
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.error(`Erro ao tentar entrar em tela cheia: ${err.message}`);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    // Recuperar dados do cache
+    function recuperarCache() {
+      try {
+        const cacheData = localStorage.getItem(CACHE_KEY);
+        if (!cacheData) return null;
+        
+        const parsedData = JSON.parse(cacheData);
+        const agora = Date.now();
+        
+        // Verificar se o cache ainda é válido
+        if (agora - parsedData.timestamp < CACHE_DURATION) {
+          console.log('Dados recuperados do cache');
+          return parsedData.dados;
+        } else {
+          console.log('Cache expirado');
+          localStorage.removeItem(CACHE_KEY);
+          return null;
+        }
+      } catch (error) {
+        console.error('Erro ao recuperar cache:', error);
+        return null;
+      }
+    }
+    
+    // ========== SISTEMA DE NOTIFICAÇÕES ==========
+    
+    function mostrarToast(mensagem, tipo = 'success') {
+      toast.textContent = mensagem;
+      toast.className = `toast ${tipo}`;
+      toast.classList.add('show');
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+    
+    function mostrarLoading(mensagem = 'Carregando dados...') {
+      loadingText.textContent = mensagem;
+      loadingOverlay.classList.remove('hidden');
+    }
+    
+    function esconderLoading() {
+      loadingOverlay.classList.add('hidden');
+    }
+    
+    // ========== CONTROLE DE CONEXÃO ==========
+    
+    function verificarConexao() {
+      isOnline = navigator.onLine;
+      
+      if (isOnline) {
+        statusIndicator.classList.remove('hidden');
+        statusIndicator.className = 'ml-3 text-xs bg-success/20 text-success px-2 py-1 rounded-full';
+        statusIndicator.innerHTML = '<i class="fas fa-circle mr-1"></i>Conectado';
+      } else {
+        statusIndicator.classList.remove('hidden');
+        statusIndicator.className = 'ml-3 text-xs bg-warning/20 text-warning px-2 py-1 rounded-full';
+        statusIndicator.innerHTML = '<i class="fas fa-circle mr-1"></i>Offline (dados em cache)';
+        mostrarToast('Você está offline. Dados podem não estar atualizados.', 'warning');
+      }
+      
+      return isOnline;
+    }
+    
+    // ========== CONTROLE DE INTERFACE ==========
+    
+    // Controle de abas
+    tabButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const tabId = button.getAttribute('data-tab');
+        
+        // Atualizar botões
+        tabButtons.forEach(btn => {
+          btn.classList.remove('active', 'bg-primary');
+          btn.classList.add('bg-gray-800', 'hover:bg-gray-700');
+        });
+        button.classList.add('active', 'bg-primary');
+        button.classList.remove('bg-gray-800', 'hover:bg-gray-700');
+        
+        // Atualizar conteúdos
+        tabContents.forEach(content => {
+          content.classList.remove('active');
+          content.classList.add('hidden');
+        });
+        document.getElementById(tabId).classList.add('active');
+        document.getElementById(tabId).classList.remove('hidden');
+        
+        // Fechar menu móvel se estiver aberto
+        if (isMobileMenuOpen) {
+          toggleMobileMenu();
+        }
+      });
+    });
+    
+    // Botão de atualizar
+    refreshBtn.addEventListener('click', atualizarDados);
+    refreshBtnMobile.addEventListener('click', atualizarDados);
+    
+    // Botão de exportar
+    exportBtn.addEventListener('click', exportarDados);
+    exportBtnMobile.addEventListener('click', exportarDados);
+    exportTableBtn.addEventListener('click', exportarTabela);
+    
+    // Menu móvel
+    mobileMenuButton.addEventListener('click', toggleMobileMenu);
+    
+    // Filtros
+    aplicarFiltrosBtn.addEventListener('click', aplicarFiltros);
+    limparFiltrosBtn.addEventListener('click', limparFiltros);
+    
+    // ========== FUNÇÕES PRINCIPAIS ==========
+    
+    // Função para limpar filtros
+    function limparFiltros() {
+      filtroSemanaGeral.value = 'all';
+      filtroMes.value = 'all';
+      filtroDataEspecifica.value = '';
+      
+      // Restaurar dados completos
+      dadosFiltrados = [...dados];
+      
+      // Atualizar interface com dados completos
+      atualizarInterfaceComFiltros();
+      
+      mostrarToast('Filtros limpos!', 'success');
+    }
+    
+    // Função para aplicar filtros
+    function aplicarFiltros() {
+      const semanaFiltro = filtroSemanaGeral.value;
+      const mesFiltro = filtroMes.value;
+      const dataEspecifica = filtroDataEspecifica.value;
+      
+      // Filtrar dados
+      dadosFiltrados = [...dados];
+      
+      if (semanaFiltro !== 'all') {
+        dadosFiltrados = dadosFiltrados.filter(item => item.SEMANA === semanaFiltro);
+      }
+      
+      if (mesFiltro !== 'all') {
+        dadosFiltrados = dadosFiltrados.filter(item => {
+          const data = new Date(item.Data);
+          return (data.getMonth() + 1) === parseInt(mesFiltro);
+        });
+      }
+      
+      // Novo filtro: a partir de data específica
+      if (dataEspecifica) {
+        const dataFiltro = new Date(dataEspecifica);
+        dadosFiltrados = dadosFiltrados.filter(item => {
+          const dataItem = new Date(item.Data);
+          return dataItem >= dataFiltro;
+        });
+      }
+      
+      // Atualizar interface com dados filtrados
+      atualizarInterfaceComFiltros();
+      
+      mostrarToast('Filtros aplicados com sucesso!', 'success');
+    }
+    
+    // Função para atualizar dados
+    function atualizarDados() {
+      refreshBtn.classList.add('animate-spin');
+      if (refreshBtnMobile) refreshBtnMobile.classList.add('animate-spin');
+      
+      carregarDados().finally(() => {
+        setTimeout(() => {
+          refreshBtn.classList.remove('animate-spin');
+          if (refreshBtnMobile) refreshBtnMobile.classList.remove('animate-spin');
+        }, 1000);
+      });
+    }
+    
+    // Função para carregar dados da API com redundância
+    async function carregarDados() {
+      mostrarLoading('Carregando dados da produção...');
+      
+      try {
+        // Verificar conexão
+        verificarConexao();
+        
+        // Tentar carregar da API primeiro
+        if (isOnline) {
+          console.log('Tentando carregar dados da API...');
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout de 10 segundos
+          
+          const res = await fetch(API_URL, { signal: controller.signal });
+          clearTimeout(timeoutId);
+          
+          if (!res.ok) {
+            throw new Error(`Erro HTTP: ${res.status}`);
+          }
+          
+          const data = await res.json();
+          
+          // Validar dados recebidos
+          if (!data || (Array.isArray(data) && data.length === 0)) {
+            throw new Error('Dados vazios recebidos da API');
+          }
+          
+          // Caso venha apenas 1 objeto, transforma em array
+          dados = Array.isArray(data) ? data : [data];
+          
+          // Processar dados para usar os nomes de colunas corretos
+          dados = processarDados(dados);
+          
+          // Inicialmente, dados filtrados são iguais aos dados completos
+          dadosFiltrados = [...dados];
+          
+          // Salvar no cache
+          salvarCache(dados);
+          
+          // Atualizar a interface
+          atualizarInterface();
+          
+          lastUpdateTime = new Date();
+          mostrarToast('Dados atualizados com sucesso!', 'success');
+          
+        } else {
+          // Offline - usar cache
+          throw new Error('Sem conexão com a internet');
+        }
+        
+      } catch (err) {
+        console.error("Erro ao carregar API:", err);
+        
+        // Tentar usar cache como fallback
+        const dadosCache = recuperarCache();
+        
+        if (dadosCache && dadosCache.length > 0) {
+          dados = dadosCache;
+          dadosFiltrados = [...dados];
+          atualizarInterface();
+          mostrarToast('Dados carregados do cache (offline)', 'warning');
+        } else {
+          // Usar dados de exemplo como último recurso
+          usarDadosExemplo();
+          mostrarToast('Erro ao carregar dados. Usando dados de exemplo.', 'error');
+        }
+      } finally {
+        esconderLoading();
+      }
+    }
+    
+    // Função para processar e padronizar os dados com os nomes de colunas corretos
+    function processarDados(dadosBrutos) {
+      if (!Array.isArray(dadosBrutos) || dadosBrutos.length === 0) {
+        console.warn('Dados brutos vazios ou inválidos para processamento');
+        return [];
+      }
+      
+      return dadosBrutos.map((item, index) => {
+        // Mapear colunas para os nomes corretos
+        // SEMANA, MARCA, CENTRO DE TRABALHO, RECURSO, QTD ATRASO, ADERÊNCIA, Data
+        
+        // Tentar diferentes possibilidades de nomes de colunas
+        const semana = item.SEMANA || item.Semana || item.semana || item.week || `Semana ${index + 1}`;
+        const marca = item.MARCA || item.Marca || item.marca || item.brand || 'N/A';
+        const centroTrabalho = item['CENTRO DE TRABALHO'] || item['Centro de Trabalho'] || item.CENTRO_DE_TRABALHO ||
+                              item.centro_trabalho || item.work_center || 'N/A';
+        const recurso = item.RECURSO || item.Recurso || item.recurso || item.resource || 'N/A';
+        const qtdAtraso = item['QTD ATRASO'] || item['Qtd Atraso'] || item.QTD_ATRASO || 
+                         item.qtd_atraso || item.delay_quantity || 0;
+        const aderencia = item.ADERÊNCIA || item.Aderência || item.ADERENCIA || 
+                         item.aderencia || item.adherence || 0.5;
+        
+        // Corrigir a data - API está retornando DATA no formato "06/08/25"
+        let dataObj;
+        let dataOriginal = item.Data || item.data || item.DATA || '';
+        
+        if (dataOriginal) {
+          // Converter formato "DD/MM/YY" para "DD/MM/YYYY"
+          const [dia, mes, ano] = dataOriginal.split('/');
+          if (dia && mes && ano) {
+            // Adicionar "20" para anos com 2 dígitos
+            const anoCompleto = ano.length === 2 ? `20${ano}` : ano;
+            dataObj = new Date(anoCompleto, mes - 1, dia);
+            
+            // Verificar se a data é válida
+            if (isNaN(dataObj.getTime())) {
+              dataObj = new Date(2023, 5, 15 + index); // Data fallback
+            }
+          } else {
+            dataObj = new Date(2023, 5, 15 + index); // Data fallback
+          }
+        } else {
+          dataObj = new Date(2023, 5, 15 + index); // Data fallback
+        }
+        
+        // Validar e formatar os valores
+        return {
+          SEMANA: semana,
+          MARCA: marca,
+          'CENTRO DE TRABALHO': centroTrabalho,
+          RECURSO: recurso,
+          'QTD ATRASO': typeof qtdAtraso === 'number' ? qtdAtraso : parseInt(qtdAtraso) || 0,
+          'ADERÊNCIA': typeof aderencia === 'number' ? Math.max(0, Math.min(1, aderencia)) : 
+                      parseFloat(aderencia) ? Math.max(0, Math.min(1, parseFloat(aderencia))) : 0.5,
+          Data: dataObj,
+          DataOriginal: dataOriginal || dataObj.toLocaleDateString('pt-BR')
+        };
+      });
+    }
+    
+    // Atualizar toda a interface
+    function atualizarInterface() {
+      atualizarFiltros();
+      atualizarCards();
+      atualizarTabela();
+      atualizarGraficos();
+      atualizarPainelAnalise(); // Nova função para atualizar painéis de análise
+      aplicarFiltros(); // Aplicar filtros padrão
+    }
+    
+    // Atualizar interface com dados filtrados
+    function atualizarInterfaceComFiltros() {
+      atualizarCards();
+      atualizarTabela();
+      atualizarGraficos();
+      atualizarPainelAnalise();
+    }
+    
+    // Nova função para atualizar os painéis de análise
+    function atualizarPainelAnalise() {
+      if (!dadosFiltrados || dadosFiltrados.length === 0) {
+        console.warn('Nenhum dado disponível para atualizar painéis de análise');
+        return;
+      }
+      
+      // Análise de Evolução da Aderência
+      atualizarPainelEvolucaoAderencia();
+      
+      // Análise de Atraso por Semana
+      atualizarPainelAtrasoSemana();
+      
+      // Análise de Aderência por Marca
+      atualizarPainelAderenciaMarca();
+      
+      // Análise de Atraso por Marca
+      atualizarPainelAtrasoMarca();
+      
+      // Análise de Performance por Recurso
+      atualizarPainelPerformanceRecurso();
+      
+      // Análise Temporal
+      atualizarPainelAnaliseTemporal();
+      
+      // Análise do Gráfico de Pizza
+      atualizarPainelPizza();
+    }
+    
+    // Atualizar painel de análise de evolução da aderência
+    function atualizarPainelEvolucaoAderencia() {
+      const semanas = [...new Set(dadosFiltrados.map(item => item.SEMANA).filter(Boolean))];
+      
+      // Calcular métricas para cada semana
+      const metricasSemanas = semanas.map(semana => {
+        const dadosSemana = dadosFiltrados.filter(item => item.SEMANA === semana);
+        const mediaAderencia = dadosSemana.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosSemana.length;
+        const percentAderencia = (mediaAderencia * 100).toFixed(1);
+        
+        return {
+          semana: semana,
+          aderencia: percentAderencia
+        };
+      });
+      
+      // Ordenar por aderência (maior para menor)
+      const metricasOrdenadas = [...metricasSemanas].sort((a, b) => parseFloat(b.aderencia) - parseFloat(a.aderencia));
+      
+      // Atualizar elementos do painel
+      if (metricasSemanas.length > 0) {
+        document.getElementById('melhor-semana').textContent = `${metricasOrdenadas[0].semana} (${metricasOrdenadas[0].aderencia}%)`;
+        document.getElementById('pior-semana').textContent = `${metricasOrdenadas[metricasOrdenadas.length - 1].semana} (${metricasOrdenadas[metricasOrdenadas.length - 1].aderencia}%)`;
+        
+        // Calcular tendência (primeira vs última semana)
+        const primeiraSemana = metricasSemanas[0];
+        const ultimaSemana = metricasSemanas[metricasSemanas.length - 1];
+        const tendencia = (parseFloat(ultimaSemana.aderencia) - parseFloat(primeiraSemana.aderencia)).toFixed(1);
+        document.getElementById('tendencia-aderencia').textContent = `${tendencia >= 0 ? '+' : ''}${tendencia}%`;
+        
+        // Calcular variação (melhor vs pior)
+        const variacao = (parseFloat(metricasOrdenadas[0].aderencia) - parseFloat(metricasOrdenadas[metricasOrdenadas.length - 1].aderencia)).toFixed(1);
+        document.getElementById('variacao-aderencia').textContent = `${variacao}%`;
+      }
+    }
+    
+    // Atualizar painel de análise de atraso por semana
+    function atualizarPainelAtrasoSemana() {
+      const semanas = [...new Set(dadosFiltrados.map(item => item.SEMANA).filter(Boolean))];
+      
+      // Calcular atraso por semana
+      const atrasoPorSemana = semanas.map(semana => {
+        const dadosSemana = dadosFiltrados.filter(item => item.SEMANA === semana);
+        const totalAtraso = dadosSemana.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+        
+        return {
+          semana: semana,
+          atraso: totalAtraso
+        };
+      });
+      
+      // Ordenar por atraso (maior para menor)
+      const atrasoOrdenado = [...atrasoPorSemana].sort((a, b) => b.atraso - a.atraso);
+      
+      // Atualizar elementos do painel
+      const totalPeriodo = atrasoPorSemana.reduce((sum, semana) => sum + semana.atraso, 0);
+      document.getElementById('total-atraso-periodo').textContent = totalPeriodo.toLocaleString();
+      
+      if (atrasoPorSemana.length > 0) {
+        document.getElementById('maior-atraso-semana').textContent = `${atrasoOrdenado[0].semana} (${atrasoOrdenado[0].atraso.toLocaleString()})`;
+        document.getElementById('menor-atraso-semana').textContent = `${atrasoOrdenado[atrasoOrdenado.length - 1].semana} (${atrasoOrdenado[atrasoOrdenado.length - 1].atraso.toLocaleString()})`;
+        
+        // Calcular tendência (primeira vs última semana)
+        const primeiraSemana = atrasoPorSemana[0];
+        const ultimaSemana = atrasoPorSemana[atrasoPorSemana.length - 1];
+        const tendencia = ultimaSemana.atraso - primeiraSemana.atraso;
+        document.getElementById('tendencia-atraso').textContent = `${tendencia >= 0 ? '+' : ''}${tendencia.toLocaleString()}`;
+      }
+    }
+    
+    // Atualizar painel de análise de aderência por marca
+    function atualizarPainelAderenciaMarca() {
+      const marcas = [...new Set(dadosFiltrados.map(item => item.MARCA).filter(Boolean))];
+      
+      // Calcular métricas para cada marca
+      const metricasMarcas = marcas.map(marca => {
+        const dadosMarca = dadosFiltrados.filter(item => item.MARCA === marca);
+        const mediaAderencia = dadosMarca.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosMarca.length;
+        const percentAderencia = (mediaAderencia * 100).toFixed(1);
+        const diferencaMeta = (90 - percentAderencia).toFixed(1);
+        
+        return {
+          marca: marca,
+          aderencia: percentAderencia,
+          diferencaMeta: diferencaMeta
+        };
+      });
+      
+      // Ordenar por aderência (maior para menor)
+      metricasMarcas.sort((a, b) => parseFloat(b.aderencia) - parseFloat(a.aderencia));
+      
+      // Atualizar elementos do painel
+      const mediaGeral = (metricasMarcas.reduce((sum, m) => sum + parseFloat(m.aderencia), 0) / metricasMarcas.length).toFixed(1);
+      document.getElementById('media-aderencia-marca').textContent = `${mediaGeral}%`;
+      
+      if (metricasMarcas.length > 0) {
+        document.getElementById('melhor-marca').textContent = `${metricasMarcas[0].marca} (${metricasMarcas[0].aderencia}%)`;
+        document.getElementById('pior-marca').textContent = `${metricasMarcas[metricasMarcas.length - 1].marca} (${metricasMarcas[metricasMarcas.length - 1].aderencia}%)`;
+        
+        // Calcular percentual de marcas que atingiram a meta (90%)
+        const marcasMeta = metricasMarcas.filter(m => parseFloat(m.aderencia) >= 90).length;
+        const percentMeta = ((marcasMeta / metricasMarcas.length) * 100).toFixed(0);
+        document.getElementById('meta-atingida-marca').textContent = `${percentMeta}%`;
+        
+        // Adicionar as três principais marcas (ou todas se houver menos de três)
+        const topMarcas = metricasMarcas.slice(0, 3);
+        const topMarcasEl = document.getElementById('top-marcas');
+        topMarcasEl.innerHTML = ''; // Limpar
+        
+        topMarcas.forEach((marca, index) => {
+          const div = document.createElement('div');
+          div.className = 'bg-gray-800/50 p-2 rounded-lg';
+          div.innerHTML = `
+            <p class="text-xs text-gray-400">${marca.marca}</p>
+            <p class="text-sm md:text-base font-bold">${marca.aderencia}%</p>
+            <p class="text-xs ${marca.diferencaMeta <= 0 ? 'text-success' : 'text-danger'}">
+              ${marca.diferencaMeta <= 0 ? 'Meta atingida' : `Faltam ${marca.diferencaMeta}%`}
+            </p>
+          `;
+          topMarcasEl.appendChild(div);
+        });
+      }
+    }
+    
+    // Atualizar painel de análise de atraso por marca
+    function atualizarPainelAtrasoMarca() {
+      const marcas = [...new Set(dadosFiltrados.map(item => item.MARCA).filter(Boolean))];
+      
+      // Calcular métricas para cada marca
+      const metricasMarcas = marcas.map(marca => {
+        const dadosMarca = dadosFiltrados.filter(item => item.MARCA === marca);
+        const totalAtraso = dadosMarca.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+        
+        return {
+          marca: marca,
+          atraso: totalAtraso
+        };
+      });
+      
+      // Ordenar por atraso (maior para menor)
+      metricasMarcas.sort((a, b) => b.atraso - a.atraso);
+      
+      // Atualizar elementos do painel
+      const totalGeral = metricasMarcas.reduce((sum, m) => sum + m.atraso, 0);
+      document.getElementById('total-atraso-marca').textContent = totalGeral.toLocaleString();
+      
+      if (metricasMarcas.length > 0) {
+        document.getElementById('maior-atraso-marca-analise').textContent = `${metricasMarcas[0].marca} (${metricasMarcas[0].atraso.toLocaleString()})`;
+        document.getElementById('menor-atraso-marca-analise').textContent = `${metricasMarcas[metricasMarcas.length - 1].marca} (${metricasMarcas[metricasMarcas.length - 1].atraso.toLocaleString()})`;
+        
+        // Calcular variação entre maior e menor atraso
+        const variacao = metricasMarcas[0].atraso - metricasMarcas[metricasMarcas.length - 1].atraso;
+        document.getElementById('variacao-atraso-marca').textContent = variacao.toLocaleString();
+        
+        // Adicionar detalhes das marcas
+        const detalhesMarcasEl = document.getElementById('detalhes-marcas-atraso');
+        detalhesMarcasEl.innerHTML = ''; // Limpar
+        
+        metricasMarcas.forEach(marca => {
+          const percentual = ((marca.atraso / totalGeral) * 100).toFixed(1);
+          const div = document.createElement('div');
+          div.className = 'mt-2 flex justify-between items-center text-xs';
+          div.innerHTML = `
+            <span class="text-gray-300">${marca.marca}</span>
+            <div class="flex items-center space-x-2">
+              <span class="text-danger">${marca.atraso.toLocaleString()}</span>
+              <span class="text-gray-400">(${percentual}%)</span>
+            </div>
+          `;
+          detalhesMarcasEl.appendChild(div);
+        });
+      }
+    }
+    
+    // Atualizar painel de análise de performance por recurso
+    function atualizarPainelPerformanceRecurso() {
+      const recursos = [...new Set(dadosFiltrados.map(item => item.RECURSO).filter(Boolean))];
+      
+      // Calcular métricas para cada recurso
+      const metricasRecursos = recursos.map(recurso => {
+        const dadosRecurso = dadosFiltrados.filter(item => item.RECURSO === recurso);
+        const mediaAderencia = dadosRecurso.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosRecurso.length;
+        const percentAderencia = (mediaAderencia * 100).toFixed(1);
+        const totalAtraso = dadosRecurso.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+        
+        return {
+          recurso: recurso,
+          aderencia: percentAderencia,
+          atraso: totalAtraso
+        };
+      });
+      
+      // Ordenar por aderência (maior para menor)
+      metricasRecursos.sort((a, b) => parseFloat(b.aderencia) - parseFloat(a.aderencia));
+      
+      // Atualizar elementos do painel
+      if (metricasRecursos.length > 0) {
+        document.getElementById('melhor-recurso').textContent = `${metricasRecursos[0].recurso} (${metricasRecursos[0].aderencia}%)`;
+        document.getElementById('pior-recurso').textContent = `${metricasRecursos[metricasRecursos.length - 1].recurso} (${metricasRecursos[metricasRecursos.length - 1].aderencia}%)`;
+        
+        // Calcular variação entre melhor e pior recurso
+        const variacao = (parseFloat(metricasRecursos[0].aderencia) - parseFloat(metricasRecursos[metricasRecursos.length - 1].aderencia)).toFixed(1);
+        document.getElementById('variacao-recurso').textContent = `${variacao}%`;
+        
+        // Adicionar detalhes dos recursos
+        const detalhesRecursosEl = document.getElementById('detalhes-recursos');
+        detalhesRecursosEl.innerHTML = ''; // Limpar
+        
+        metricasRecursos.forEach(recurso => {
+          const div = document.createElement('div');
+          div.className = 'mt-2 flex justify-between items-center text-xs';
+          div.innerHTML = `
+            <span class="text-gray-300">${recurso.recurso}</span>
+            <div class="flex items-center space-x-2">
+              <span class="text-success">${recurso.aderencia}%</span>
+              <span class="text-danger">${recurso.atraso.toLocaleString()}</span>
+            </div>
+          `;
+          detalhesRecursosEl.appendChild(div);
+        });
+      }
+    }
+    
+    // Atualizar painel de análise temporal
+    function atualizarPainelAnaliseTemporal() {
+      const semanas = [...new Set(dadosFiltrados.map(item => item.SEMANA).filter(Boolean))];
+      
+      // Calcular métricas para cada semana
+      const metricasSemanas = semanas.map(semana => {
+        const dadosSemana = dadosFiltrados.filter(item => item.SEMANA === semana);
+        const mediaAderencia = dadosSemana.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosSemana.length;
+        const percentAderencia = (mediaAderencia * 100).toFixed(1);
+        const totalAtraso = dadosSemana.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+        
+        return {
+          semana: semana,
+          aderencia: percentAderencia,
+          atraso: totalAtraso
+        };
+      });
+      
+      // Calcular correlação entre aderência e atraso
+      let somaProduto = 0;
+      let somaAderencia = 0;
+      let somaAtraso = 0;
+      let somaAderenciaQuad = 0;
+      let somaAtrasoQuad = 0;
+      const n = metricasSemanas.length;
+      
+      metricasSemanas.forEach(semana => {
+        const aderencia = parseFloat(semana.aderencia);
+        const atraso = semana.atraso;
+        
+        somaProduto += aderencia * atraso;
+        somaAderencia += aderencia;
+        somaAtraso += atraso;
+        somaAderenciaQuad += aderencia * aderencia;
+        somaAtrasoQuad += atraso * atraso;
+      });
+      
+      const numerador = n * somaProduto - somaAderencia * somaAtraso;
+      const denominador = Math.sqrt((n * somaAderenciaQuad - somaAderencia * somaAderencia) * (n * somaAtrasoQuad - somaAtraso * somaAtraso));
+      const correlacao = denominador !== 0 ? (numerador / denominador).toFixed(2) : 0;
+      
+      // Atualizar elementos do painel
+      document.getElementById('correlacao-temporal').textContent = correlacao;
+      
+      // Encontrar melhor e pior período
+      const metricasOrdenadasAderencia = [...metricasSemanas].sort((a, b) => parseFloat(b.aderencia) - parseFloat(a.aderencia));
+      const metricasOrdenadasAtraso = [...metricasSemanas].sort((a, b) => a.atraso - b.atraso);
+      
+      if (metricasSemanas.length > 0) {
+        document.getElementById('melhor-periodo').textContent = `${metricasOrdenadasAderencia[0].semana} (${metricasOrdenadasAderencia[0].aderencia}%)`;
+        document.getElementById('pior-periodo').textContent = `${metricasOrdenadasAtraso[metricasOrdenadasAtraso.length - 1].semana} (${metricasOrdenadasAtraso[metricasOrdenadasAtraso.length - 1].atraso.toLocaleString()})`;
+        
+        // Calcular tendência (primeira vs última semana)
+        const primeiraSemana = metricasSemanas[0];
+        const ultimaSemana = metricasSemanas[metricasSemanas.length - 1];
+        const tendencia = (parseFloat(ultimaSemana.aderencia) - parseFloat(primeiraSemana.aderencia)).toFixed(1);
+        document.getElementById('tendencia-temporal').textContent = `${tendencia >= 0 ? '+' : ''}${tendencia}%`;
+      }
+    }
+    
+    // NOVA FUNÇÃO: Atualizar painel de análise do gráfico de pizza
+    function atualizarPainelPizza() {
+      const semanaSelecionada = document.getElementById('filtro-semana-pizza').value;
+      const dadosParaPizza = semanaSelecionada === 'all' ? 
+        dadosFiltrados : 
+        dadosFiltrados.filter(item => item.SEMANA === semanaSelecionada);
+      
+      // Agrupar por marca e calcular quantidade total
+      const quantidadePorMarca = {};
+      dadosParaPizza.forEach(item => {
+        const marca = item.MARCA;
+        const quantidade = item['QTD ATRASO'] || 0;
+        if (marca) {
+          if (!quantidadePorMarca[marca]) {
+            quantidadePorMarca[marca] = 0;
+          }
+          quantidadePorMarca[marca] += quantidade;
+        }
+      });
+      
+      // Calcular totais e encontrar a marca líder
+      const marcas = Object.keys(quantidadePorMarca);
+      const quantidades = Object.values(quantidadePorMarca);
+      const totalItens = quantidades.reduce((a, b) => a + b, 0);
+      
+      if (marcas.length > 0) {
+        // Encontrar a marca com maior quantidade
+        const indiceLider = quantidades.indexOf(Math.max(...quantidades));
+        const marcaLider = marcas[indiceLider];
+        const quantidadeLider = quantidades[indiceLider];
+        const participacaoLider = ((quantidadeLider / totalItens) * 100).toFixed(1);
+        
+        // Atualizar elementos do painel
+        document.getElementById('marca-lider').textContent = marcaLider;
+        document.getElementById('participacao-lider').textContent = `${participacaoLider}%`;
+        document.getElementById('total-itens').textContent = totalItens.toLocaleString();
+        
+        // Adicionar as três principais marcas por quantidade
+        const marcasOrdenadas = marcas.map((marca, index) => ({
+          marca: marca,
+          quantidade: quantidades[index],
+          participacao: ((quantidades[index] / totalItens) * 100).toFixed(1)
+        })).sort((a, b) => b.quantidade - a.quantidade).slice(0, 3);
+        
+        const topMarcasQuantidadeEl = document.getElementById('top-marcas-quantidade');
+        topMarcasQuantidadeEl.innerHTML = ''; // Limpar
+        
+        marcasOrdenadas.forEach((marca, index) => {
+          const div = document.createElement('div');
+          div.className = 'bg-gray-800/50 p-2 rounded-lg';
+          div.innerHTML = `
+            <p class="text-xs text-gray-400">${marca.marca}</p>
+            <p class="text-sm md:text-base font-bold">${marca.quantidade.toLocaleString()}</p>
+            <p class="text-xs text-primary">${marca.participacao}%</p>
+          `;
+          topMarcasQuantidadeEl.appendChild(div);
+        });
+      }
+    }
+    
+    // Atualizar os filtros disponíveis
+    function atualizarFiltros() {
+      if (!dados || dados.length === 0) return;
+      
+      // Atualizar filtro de semanas
+      const semanas = [...new Set(dados.map(item => item.SEMANA).filter(Boolean))];
+      const filtroSemanaGeralEl = document.getElementById('filtro-semana-geral');
+      const filtroSemanaPizzaEl = document.getElementById('filtro-semana-pizza');
+      
+      // Limpar opções existentes (mantendo a primeira)
+      while (filtroSemanaGeralEl.children.length > 1) {
+        filtroSemanaGeralEl.removeChild(filtroSemanaGeralEl.lastChild);
+      }
+      
+      while (filtroSemanaPizzaEl.children.length > 1) {
+        filtroSemanaPizzaEl.removeChild(filtroSemanaPizzaEl.lastChild);
+      }
+      
+      // Adicionar opções de semana
+      semanas.forEach(semana => {
+        const option = document.createElement('option');
+        option.value = semana;
+        option.textContent = semana;
+        filtroSemanaGeralEl.appendChild(option);
+        filtroSemanaPizzaEl.appendChild(option.cloneNode(true));
+      });
+    }
+    
+    // Função para atualizar os cards com os dados
+    function atualizarCards() {
+      if (!dadosFiltrados || dadosFiltrados.length === 0) {
+        console.warn('Nenhum dado disponível para atualizar cards');
+        return;
+      }
+      
+      // Calcular soma dos atrasos
+      const somaAtrasos = dadosFiltrados.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+      
+      // Qtd em Atraso (soma dos dados filtrados)
+      const qtdAtrasoEl = document.getElementById('qtdAtraso');
+      qtdAtrasoEl.textContent = somaAtrasos.toLocaleString();
+      qtdAtrasoEl.classList.remove('animate-pulse');
+      
+      // Calcular tendência do atraso (comparando com todos os dados)
+      const somaAtrasosCompleto = dados.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+      const diffAtraso = somaAtrasos - somaAtrasosCompleto;
+      const percentAtraso = somaAtrasosCompleto > 0 ? 
+        (diffAtraso / somaAtrasosCompleto * 100).toFixed(1) : 0;
+      
+      const atrasoTrendEl = document.getElementById('atraso-trend');
+      const atrasoChangeEl = document.getElementById('atraso-change');
+      
+      atrasoTrendEl.textContent = diffAtraso >= 0 ? 'Aumento' : 'Redução';
+      atrasoChangeEl.textContent = `${Math.abs(diffAtraso).toLocaleString()} (${Math.abs(percentAtraso)}%)`;
+      atrasoChangeEl.className = `text-xs md:text-sm ml-2 ${diffAtraso >= 0 ? 'text-danger' : 'text-success'}`;
+      
+      // Aderência (média dos dados filtrados)
+      const mediaAderencia = dadosFiltrados.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosFiltrados.length;
+      const aderenciaPercent = (mediaAderencia * 100).toFixed(1);
+      const aderenciaEl = document.getElementById('aderencia');
+      aderenciaEl.textContent = aderenciaPercent + "%";
+      aderenciaEl.classList.remove('animate-pulse');
+      
+      // Barra de progresso da aderência
+      document.getElementById('aderencia-bar').style.width = aderenciaPercent + '%';
+      
+      // Calcular tendência da aderência (comparando com todos os dados)
+      const mediaAderenciaCompleto = dados.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dados.length;
+      const diffAderencia = (mediaAderencia - mediaAderenciaCompleto) * 100;
+      const aderenciaTrendEl = document.getElementById('aderencia-trend');
+      const aderenciaChangeEl = document.getElementById('aderencia-change');
+      
+      aderenciaTrendEl.textContent = diffAderencia >= 0 ? 'Melhoria' : 'Queda';
+      aderenciaChangeEl.textContent = `${diffAderencia >= 0 ? '+' : ''}${diffAderencia.toFixed(1)}%`;
+      aderenciaChangeEl.className = `text-xs md:text-sm ml-2 ${diffAderencia >= 0 ? 'text-success' : 'text-danger'}`;
+      
+      // Total de Marcas (nos dados filtrados)
+      const marcasUnicas = [...new Set(dadosFiltrados.map(item => item.MARCA).filter(Boolean))];
+      document.getElementById('total-marcas').textContent = marcasUnicas.length;
+      
+      // Calcular Maior e Menor Atraso por Marca
+      calcularAtrasoPorMarca();
+    }
+    
+    // Função para calcular maior e menor atraso por marca
+    function calcularAtrasoPorMarca() {
+      if (!dadosFiltrados || dadosFiltrados.length === 0) return;
+      
+      const marcas = [...new Set(dadosFiltrados.map(item => item.MARCA).filter(Boolean))];
+      
+      // Calcular atraso total por marca
+      const atrasoPorMarca = marcas.map(marca => {
+        const dadosMarca = dadosFiltrados.filter(item => item.MARCA === marca);
+        const atrasoTotal = dadosMarca.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+        return {
+          marca: marca,
+          atraso: atrasoTotal
+        };
+      });
+      
+      // Ordenar por atraso (maior para menor)
+      atrasoPorMarca.sort((a, b) => b.atraso - a.atraso);
+      
+      // Atualizar cards de maior e menor atraso
+      if (atrasoPorMarca.length > 0) {
+        // Maior atraso
+        document.getElementById('maior-atraso-marca').textContent = atrasoPorMarca[0].atraso.toLocaleString();
+        document.getElementById('maior-atraso-marca-nome').textContent = atrasoPorMarca[0].marca;
+        
+        // Menor atraso
+        document.getElementById('menor-atraso-marca').textContent = atrasoPorMarca[atrasoPorMarca.length - 1].atraso.toLocaleString();
+        document.getElementById('menor-atraso-marca-nome').textContent = atrasoPorMarca[atrasoPorMarca.length - 1].marca;
+      }
+    }
+    
+    // Função para atualizar a tabela de detalhes
+    function atualizarTabela() {
+      const tabelaEl = document.getElementById('detalhes-table');
+      
+      if (!dadosFiltrados || dadosFiltrados.length === 0) {
+        tabelaEl.innerHTML = '<tr><td colspan="7" class="px-4 py-3 text-center">Nenhum dado disponível</td></tr>';
+        return;
+      }
+      
+      // Ordenar por semana (mais recente primeiro)
+      const semanasUnicas = [...new Set(dadosFiltrados.map(item => item.SEMANA).filter(Boolean))];
+      const semanasOrdenadas = semanasUnicas.sort((a, b) => {
+        // Extrair números das semanas para ordenação
+        const numA = parseInt(a.replace(/\D/g, '')) || 0;
+        const numB = parseInt(b.replace(/\D/g, '')) || 0;
+        return numB - numA;
+      });
+      
+      tabelaEl.innerHTML = '';
+      
+      // Agrupar por semana para ordenação
+      semanasOrdenadas.forEach(semana => {
+        const dadosSemana = dadosFiltrados.filter(item => item.SEMANA === semana);
+        
+        dadosSemana.forEach(registro => {
+          const tr = document.createElement('tr');
+          const aderenciaPercent = ((registro['ADERÊNCIA'] || 0) * 100).toFixed(1);
+          
+          // Corrigir a data - garantir que seja exibida corretamente
+          let dataExibicao = registro.DataOriginal || 'N/A';
+          
+          tr.innerHTML = `
+            <td class="px-2 md:px-4 py-2 md:py-3 whitespace-nowrap text-xs md:text-sm font-medium">${registro.SEMANA || 'N/A'}</td>
+            <td class="px-2 md:px-4 py-2 md:py-3 whitespace-nowrap text-xs md:text-sm">${registro.MARCA || 'N/A'}</td>
+            <td class="px-2 md:px-4 py-2 md:py-3 whitespace-nowrap text-xs md:text-sm">${registro['CENTRO DE TRABALHO'] || 'N/A'}</td>
+            <td class="px-2 md:px-4 py-2 md:py-3 whitespace-nowrap text-xs md:text-sm">${registro.RECURSO || 'N/A'}</td>
+            <td class="px-2 md:px-4 py-2 md:py-3 whitespace-nowrap text-xs md:text-sm">${(registro['QTD ATRASO'] || 0).toLocaleString()}</td>
+            <td class="px-2 md:px-4 py-2 md:py-3 whitespace-nowrap text-xs md:text-sm">${aderenciaPercent}%</td>
+            <td class="px-2 md:px-4 py-2 md:py-3 whitespace-nowrap text-xs md:text-sm">${dataExibicao}</td>
+          `;
+          
+          tabelaEl.appendChild(tr);
+        });
+      });
+    }
+    
+    // Função para atualizar todos os gráficos
+    function atualizarGraficos() {
+      if (!dadosFiltrados || dadosFiltrados.length === 0) {
+        console.warn('Nenhum dado disponível para atualizar gráficos');
+        return;
+      }
+      
+      // Destruir gráficos existentes apenas se necessário
+      const charts = [
+        { chart: aderenciaChart, id: 'aderenciaChart' },
+        { chart: atrasoChart, id: 'atrasoChart' },
+        { chart: marcaChart, id: 'marcaChart' },
+        { chart: marcaAtrasoChart, id: 'marcaAtrasoChart' },
+        { chart: recursoChart, id: 'recursoChart' },
+        { chart: analiseTemporalChart, id: 'analiseTemporalChart' },
+        { chart: pizzaChart, id: 'pizzaChart' }
+      ];
+      
+      charts.forEach(({ chart, id }) => {
+        if (chart) {
+          chart.destroy();
+        }
+      });
+      
+      // Criar gráficos com dados filtrados
+      criarGraficoAderencia();
+      criarGraficoAtraso();
+      criarGraficoMarca();
+      criarGraficoMarcaAtraso();
+      criarGraficoRecurso();
+      criarGraficoAnaliseTemporal();
+      criarGraficoPizza(); // NOVO: Criar gráfico de pizza
+    }
+    
+    // Função para criar o gráfico de evolução da aderência
+    function criarGraficoAderencia() {
+      const semanas = [...new Set(dadosFiltrados.map(item => item.SEMANA).filter(Boolean))];
+      
+      // Calcular aderência média por semana
+      const aderenciaPorSemana = semanas.map(semana => {
+        const dadosSemana = dadosFiltrados.filter(item => item.SEMANA === semana);
+        const mediaAderencia = dadosSemana.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosSemana.length;
+        return (mediaAderencia * 100).toFixed(1);
+      });
+      
+      const aderenciaCtx = document.getElementById('aderenciaChart').getContext('2d');
+      aderenciaChart = new Chart(aderenciaCtx, {
+        type: "line",
+        data: {
+          labels: semanas,
+          datasets: [{
+            label: "Aderência (%)",
+            data: aderenciaPorSemana,
+            borderColor: "#10b981",
+            backgroundColor: "rgba(16, 185, 129, 0.1)",
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: "#10b981",
+            pointBorderColor: "#fff",
+            pointBorderWidth: 2,
+            pointRadius: window.innerWidth < 768 ? 3 : 5,
+            pointHoverRadius: window.innerWidth < 768 ? 5 : 7
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                afterLabel: function(context) {
+                  const value = parseFloat(context.parsed.y);
+                  const meta = value >= 90 ? 'Meta atingida' : 'Meta não atingida';
+                  return `Meta: 90%\nStatus: ${meta}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: false,
+              min: Math.max(0, Math.min(...aderenciaPorSemana) - 5),
+              max: 100,
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                maxTicksLimit: window.innerWidth < 768 ? 5 : 10
+              }
+            },
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                maxTicksLimit: window.innerWidth < 768 ? 5 : 10
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // Função para criar o gráfico de atraso por semana
+    function criarGraficoAtraso() {
+      const semanas = [...new Set(dadosFiltrados.map(item => item.SEMANA).filter(Boolean))];
+      
+      // Calcular atraso total por semana
+      const atrasoPorSemana = semanas.map(semana => {
+        const dadosSemana = dadosFiltrados.filter(item => item.SEMANA === semana);
+        return dadosSemana.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+      });
+      
+      const atrasoCtx = document.getElementById('atrasoChart').getContext('2d');
+      atrasoChart = new Chart(atrasoCtx, {
+        type: "bar",
+        data: {
+          labels: semanas,
+          datasets: [{
+            label: "Qtd em Atraso",
+            data: atrasoPorSemana,
+            backgroundColor: "#ef4444",
+            borderRadius: 5,
+            borderSkipped: false,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                maxTicksLimit: window.innerWidth < 768 ? 5 : 10
+              }
+            },
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                maxTicksLimit: window.innerWidth < 768 ? 5 : 10
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // Função para criar o gráfico de aderência por marca
+    function criarGraficoMarca() {
+      const marcas = [...new Set(dadosFiltrados.map(item => item.MARCA).filter(Boolean))];
+      const semanas = [...new Set(dadosFiltrados.map(item => item.SEMANA).filter(Boolean))];
+      
+      // Preparar dados para o gráfico de marcas
+      const datasets = [];
+      
+      // Adicionar dataset para cada marca com suas semanas
+      marcas.forEach(marca => {
+        const dadosMarca = dadosFiltrados.filter(item => item.MARCA === marca);
+        
+        // Calcular aderência por semana para esta marca
+        const aderenciaPorSemana = semanas.map(semana => {
+          const dadosSemana = dadosMarca.filter(item => item.SEMANA === semana);
+          if (dadosSemana.length === 0) return null;
+          const mediaAderencia = dadosSemana.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosSemana.length;
+          return (mediaAderencia * 100).toFixed(1);
+        });
+        
+        // Adicionar dataset de aderência
+        datasets.push({
+          label: `${marca} - Aderência (%)`,
+          data: aderenciaPorSemana,
+          type: 'line',
+          borderColor: getColorForMarca(marca, true),
+          backgroundColor: 'transparent',
+          tension: 0.4,
+          fill: false
+        });
+      });
+      
+      const marcaCtx = document.getElementById('marcaChart').getContext('2d');
+      marcaChart = new Chart(marcaCtx, {
+        data: {
+          labels: semanas,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                boxWidth: 12,
+                font: {
+                  size: window.innerWidth < 768 ? 10 : 12
+                }
+              }
+            },
+            tooltip: {
+              enabled: true,
+              callbacks: {
+                afterLabel: function(context) {
+                  const datasetLabel = context.dataset.label;
+                  if (datasetLabel.includes('Aderência')) {
+                    const value = parseFloat(context.parsed.y);
+                    const meta = value >= 90 ? 'Meta atingida' : 'Meta não atingida';
+                    return `Meta: 90%\nStatus: ${meta}`;
+                  }
+                  return '';
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                maxTicksLimit: window.innerWidth < 768 ? 5 : 10
+              }
+            },
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                maxTicksLimit: window.innerWidth < 768 ? 5 : 10
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // Função para criar o gráfico de atraso por marca
+    function criarGraficoMarcaAtraso() {
+      const marcas = [...new Set(dadosFiltrados.map(item => item.MARCA).filter(Boolean))];
+      
+      // Calcular atraso total por marca
+      const atrasoPorMarca = marcas.map(marca => {
+        const dadosMarca = dadosFiltrados.filter(item => item.MARCA === marca);
+        return dadosMarca.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+      });
+      
+      const marcaAtrasoCtx = document.getElementById('marcaAtrasoChart').getContext('2d');
+      marcaAtrasoChart = new Chart(marcaAtrasoCtx, {
+        type: "bar",
+        data: {
+          labels: marcas,
+          datasets: [{
+            label: "Atraso por Marca",
+            data: atrasoPorMarca,
+            backgroundColor: marcas.map(marca => getColorForMarca(marca, false)),
+            borderRadius: 5,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                maxTicksLimit: window.innerWidth < 768 ? 5 : 10
+              }
+            },
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                maxTicksLimit: window.innerWidth < 768 ? 5 : 10
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // Função auxiliar para obter cores para as marcas
+    function getColorForMarca(marca, isLine) {
+      // Verificar se temos uma cor específica para esta marca
+      if (coresMarcas[marca.toUpperCase()]) {
+        return isLine ? coresMarcas[marca.toUpperCase()] : 
+               `${coresMarcas[marca.toUpperCase()]}99`; // Adiciona transparência para barras
+      }
+      
+      // Se não tiver cor específica, usar uma cor da paleta baseada no hash da marca
+      let hash = 0;
+      for (let i = 0; i < marca.length; i++) {
+        hash = marca.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      
+      const index = Math.abs(hash) % paletaCores.length;
+      return isLine ? paletaCores[index] : `${paletaCores[index]}99`;
+    }
+    
+    function criarGraficoRecurso() {
+      const recursos = [...new Set(dadosFiltrados.map(item => item.RECURSO).filter(Boolean))];
+      const performancePorRecurso = recursos.map(recurso => {
+        const dadosRecurso = dadosFiltrados.filter(item => item.RECURSO === recurso);
+        const mediaAderencia = dadosRecurso.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosRecurso.length;
+        return (mediaAderencia * 100).toFixed(1);
+      });
+      
+      const recursoCtx = document.getElementById('recursoChart').getContext('2d');
+      recursoChart = new Chart(recursoCtx, {
+        type: "radar",
+        data: {
+          labels: recursos,
+          datasets: [{
+            label: "Performance (%)",
+            data: performancePorRecurso,
+            backgroundColor: "rgba(59, 130, 246, 0.2)",
+            borderColor: "#3b82f6",
+            pointBackgroundColor: "#3b82f6",
+            pointBorderColor: "#fff",
+            pointBorderWidth: 2,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              beginAtZero: true,
+              max: 100,
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              angleLines: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              pointLabels: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                font: {
+                  size: window.innerWidth < 768 ? 10 : 12
+                }
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                backdropColor: 'transparent',
+                stepSize: 20
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    function criarGraficoAnaliseTemporal() {
+      const semanas = [...new Set(dadosFiltrados.map(item => item.SEMANA).filter(Boolean))];
+      
+      // Calcular aderência e atraso por semana
+      const aderenciaPorSemana = semanas.map(semana => {
+        const dadosSemana = dadosFiltrados.filter(item => item.SEMANA === semana);
+        const mediaAderencia = dadosSemana.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosSemana.length;
+        return (mediaAderencia * 100).toFixed(1);
+      });
+      
+      const atrasoPorSemana = semanas.map(semana => {
+        const dadosSemana = dadosFiltrados.filter(item => item.SEMANA === semana);
+        return dadosSemana.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+      });
+      
+      const analiseTemporalCtx = document.getElementById('analiseTemporalChart').getContext('2d');
+      analiseTemporalChart = new Chart(analiseTemporalCtx, {
+        type: "line",
+        data: {
+          labels: semanas,
+          datasets: [
+            {
+              label: "Aderência (%)",
+              data: aderenciaPorSemana,
+              borderColor: "#10b981",
+              backgroundColor: "rgba(16, 185, 129, 0.1)",
+              fill: false,
+              yAxisID: 'y',
+              tension: 0.4,
+            },
+            {
+              label: "Qtd em Atraso",
+              data: atrasoPorSemana,
+              borderColor: "#ef4444",
+              backgroundColor: "rgba(239, 68, 68, 0.1)",
+              fill: false,
+              yAxisID: 'y1',
+              tension: 0.4,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                afterLabel: function(context) {
+                  if (context.dataset.label === "Aderência (%)") {
+                    const value = parseFloat(context.parsed.y);
+                    const meta = value >= 90 ? 'Meta atingida' : 'Meta não atingida';
+                    return `Meta: 90%\nStatus: ${meta}`;
+                  }
+                  return '';
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              type: 'linear',
+              display: true,
+              position: 'left',
+              title: {
+                display: true,
+                text: 'Aderência (%)',
+                color: 'rgba(255, 255, 255, 0.7)'
+              },
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                maxTicksLimit: window.innerWidth < 768 ? 5 : 10
+              },
+              max: 100
+            },
+            y1: {
+              type: 'linear',
+              display: true,
+              position: 'right',
+              title: {
+                display: true,
+                text: 'Qtd em Atraso',
+                color: 'rgba(255, 255, 255, 0.7)'
+              },
+              grid: {
+                drawOnChartArea: false,
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                maxTicksLimit: window.innerWidth < 768 ? 5 : 10
+              },
+            },
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.1)'
+              },
+              ticks: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                maxTicksLimit: window.innerWidth < 768 ? 5 : 10
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // NOVA FUNÇÃO: Criar gráfico de pizza
+    function criarGraficoPizza() {
+      const semanaSelecionada = document.getElementById('filtro-semana-pizza').value;
+      const dadosParaPizza = semanaSelecionada === 'all' ? 
+        dadosFiltrados : 
+        dadosFiltrados.filter(item => item.SEMANA === semanaSelecionada);
+      
+      // Agrupar por marca e calcular quantidade total
+      const quantidadePorMarca = {};
+      dadosParaPizza.forEach(item => {
+        const marca = item.MARCA;
+        const quantidade = item['QTD ATRASO'] || 0;
+        if (marca) {
+          if (!quantidadePorMarca[marca]) {
+            quantidadePorMarca[marca] = 0;
+          }
+          quantidadePorMarca[marca] += quantidade;
+        }
+      });
+      
+      // Preparar dados para o gráfico
+      const marcas = Object.keys(quantidadePorMarca);
+      const quantidades = Object.values(quantidadePorMarca);
+      const cores = marcas.map(marca => getColorForMarca(marca, false));
+      
+      const pizzaCtx = document.getElementById('pizzaChart').getContext('2d');
+      pizzaChart = new Chart(pizzaCtx, {
+        type: 'pie',
+        data: {
+          labels: marcas,
+          datasets: [{
+            data: quantidades,
+            backgroundColor: cores,
+            borderColor: 'rgba(255, 255, 255, 0.2)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: 'rgba(255, 255, 255, 0.7)',
+                boxWidth: 12,
+                font: {
+                  size: window.innerWidth < 768 ? 10 : 12
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const label = context.label || '';
+                  const value = context.raw || 0;
+                  const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                  const percentage = Math.round((value / total) * 100);
+                  return `${label}: ${value.toLocaleString()} (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // Adicionar evento para atualizar o gráfico de pizza quando o filtro de semana mudar
+    document.getElementById('filtro-semana-pizza').addEventListener('change', function() {
+      if (pizzaChart) {
+        pizzaChart.destroy();
+      }
+      criarGraficoPizza();
+      atualizarPainelPizza();
+    });
+    
+    // Função para usar dados de exemplo em caso de erro na API
+    function usarDadosExemplo() {
+      console.log('Usando dados de exemplo');
+      dados = [
+        { 
+          SEMANA: "SEMANA 31", 
+          MARCA: "UMBRO", 
+          "CENTRO_DE_TRABALHO": "", 
+          RECURSO: "Montagem/Fab 1 Grp 1 (1114)", 
+          "QTD_ATRASO": 1740, 
+          "ADERÊNCIA": 0.7041, 
+          "DATA": "06/08/25" 
+        },
+        { 
+          SEMANA: "SEMANA 30", 
+          MARCA: "NIKE", 
+          "CENTRO_DE_TRABALHO": "CT-01", 
+          RECURSO: "Montagem/Fab 2 Grp 1 (1115)", 
+          "QTD_ATRASO": 1200, 
+          "ADERÊNCIA": 0.85, 
+          "DATA": "30/07/25" 
+        },
+        { 
+          SEMANA: "SEMANA 31", 
+          MARCA: "ADIDAS", 
+          "CENTRO_DE_TRABALHO": "CT-02", 
+          RECURSO: "Montagem/Fab 3 Grp 1 (1116)", 
+          "QTD_ATRASO": 950, 
+          "ADERÊNCIA": 0.91, 
+          "DATA": "06/08/25" 
+        },
+        { 
+          SEMANA: "SEMANA 30", 
+          MARCA: "PUMA", 
+          "CENTRO_DE_TRABALHO": "CT-03", 
+          RECURSO: "Montagem/Fab 1 Grp 2 (1117)", 
+          "QTD_ATRASO": 800, 
+          "ADERÊNCIA": 0.88, 
+          "DATA": "30/07/25" 
+        },
+        { 
+          SEMANA: "SEMANA 31", 
+          MARCA: "REEBOK", 
+          "CENTRO_DE_TRABALHO": "CT-04", 
+          RECURSO: "Montagem/Fab 2 Grp 2 (1118)", 
+          "QTD_ATRASO": 1100, 
+          "ADERÊNCIA": 0.79, 
+          "DATA": "06/08/25" 
+        },
+        { 
+          SEMANA: "SEMANA 30", 
+          MARCA: "UMBRO", 
+          "CENTRO_DE_TRABALHO": "", 
+          RECURSO: "Montagem/Fab 3 Grp 2 (1119)", 
+          "QTD_ATRASO": 1600, 
+          "ADERÊNCIA": 0.72, 
+          "DATA": "30/07/25" 
+        },
+        { 
+          SEMANA: "SEMANA 29", 
+          MARCA: "NEW BALANCE", 
+          "CENTRO_DE_TRABALHO": "CT-05", 
+          RECURSO: "Montagem/Fab 1 Grp 3 (1120)", 
+          "QTD_ATRASO": 750, 
+          "ADERÊNCIA": 0.93, 
+          "DATA": "23/07/25" 
+        },
+        { 
+          SEMANA: "SEMANA 29", 
+          MARCA: "CONVERSE", 
+          "CENTRO_DE_TRABALHO": "CT-06", 
+          RECURSO: "Montagem/Fab 2 Grp 3 (1121)", 
+          "QTD_ATRASO": 900, 
+          "ADERÊNCIA": 0.87, 
+          "DATA": "23/07/25" 
+        }
+      ];
+      
+      dadosFiltrados = [...dados];
+      atualizarInterface();
+    }
+    
+    // Função para exportar dados
+    function exportarDados() {
+      if (!dadosFiltrados || dadosFiltrados.length === 0) {
+        mostrarToast('Nenhum dado disponível para exportar', 'warning');
+        return;
+      }
+      
+      try {
+        const csvContent = "data:text/csv;charset=utf-8," 
+          + "SEMANA,MARCA,CENTRO_DE_TRABALHO,RECURSO,QTD_ATRASO,ADERENCIA,Data\n"
+          + dadosFiltrados.map(e => 
+              `"${e.SEMANA || ''}","${e.MARCA || ''}","${e['CENTRO DE TRABALHO'] || ''}","${e.RECURSO || ''}","${e['QTD ATRASO'] || 0}","${(e['ADERÊNCIA'] || 0) * 100}","${e.DataOriginal || ''}"`
+            ).join("\n");
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "dados_producao.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        mostrarToast('Dados exportados com sucesso!', 'success');
+      } catch (error) {
+        console.error('Erro ao exportar dados:', error);
+        mostrarToast('Erro ao exportar dados', 'error');
+      }
+    }
+    
+    function exportarTabela() {
+      exportarDados(); // Reutiliza a mesma função
+    }
+    
+    // ========== INICIALIZAÇÃO ==========
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      // Verificar conexão inicial
+      verificarConexao();
+      
+      // Tentar carregar do cache primeiro para uma experiência mais rápida
+      const dadosCache = recuperarCache();
+      if (dadosCache && dadosCache.length > 0) {
+        dados = dadosCache;
+        dadosFiltrados = [...dados];
+        atualizarInterface();
+        mostrarToast('Dados carregados do cache', 'success');
+      }
+      
+      // Carregar dados da API
+      carregarDados();
+      
+      // Atualizar dados a cada 30 minutos (apenas se online)
+      setInterval(() => {
+        if (isOnline) {
+          carregarDados();
+        }
+      }, 1800000); // 30 minutos
+      
+      // Monitorar mudanças de conexão
+      window.addEventListener('online', () => {
+        verificarConexao();
+        mostrarToast('Conexão restaurada. Atualizando dados...', 'success');
+        carregarDados();
+      });
+      
+      window.addEventListener('offline', () => {
+        verificarConexao();
+      });
+    });
+  </script>
+ </body>
+</html>
