@@ -190,7 +190,7 @@
         <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center mr-3">
           <i class="fas fa-industry"></i>
         </div>
-        <h1 class="text-xl md:text-2xl font-bold">Aderêndia de Produção</h1>
+        <h1 class="text-xl md:text-2xl font-bold">Aderência de Produção</h1>
         <span id="status-indicator" class="ml-3 text-xs bg-success/20 text-success px-2 py-1 rounded-full hidden">
           <i class="fas fa-circle mr-1"></i>Conectado
         </span>
@@ -247,11 +247,13 @@
   <main class="p-3 md:p-6 max-w-9xl mx-auto">
     <!-- Cards de Indicadores -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-6 md:mb-8">
+      <!-- Card Qtd em Atraso (Última Semana) -->
       <div class="bg-gradient-to-r from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg card-hover">
         <div class="flex justify-between items-start">
           <div>
             <h2 class="text-base md:text-lg font-semibold text-gray-300">Qtd em Atraso</h2>
             <p id="qtdAtraso" class="text-2xl md:text-3xl font-bold mt-2 animate-pulse">--</p>
+            <p id="semana-atraso" class="text-xs text-gray-400 mt-1">Semana: --</p>
           </div>
           <div class="bg-danger/20 p-2 md:p-3 rounded-full">
             <i class="fas fa-exclamation-triangle text-danger text-lg md:text-xl"></i>
@@ -263,11 +265,13 @@
         </div>
       </div>
       
+      <!-- Card Aderência (Última Semana) -->
       <div class="bg-gradient-to-r from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg card-hover">
         <div class="flex justify-between items-start">
           <div>
             <h2 class="text-base md:text-lg font-semibold text-gray-300">Aderência</h2>
             <p id="aderencia" class="text-2xl md:text-3xl font-bold mt-2 animate-pulse">--</p>
+            <p id="semana-aderencia" class="text-xs text-gray-400 mt-1">Semana: --</p>
           </div>
           <div class="bg-success/20 p-2 md:p-3 rounded-full">
             <i class="fas fa-chart-line text-success text-lg md:text-xl"></i>
@@ -284,50 +288,51 @@
         </div>
       </div>
       
+      <!-- Card ASICS -->
       <div class="bg-gradient-to-r from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg card-hover">
         <div class="flex justify-between items-start">
           <div>
-            <h2 class="text-base md:text-lg font-semibold text-gray-300">Marcas</h2>
-            <p id="total-marcas" class="text-2xl md:text-3xl font-bold mt-2">--</p>
+            <h2 class="text-base md:text-lg font-semibold text-gray-300">ASICS</h2>
+            <p id="asics-atraso" class="text-2xl md:text-3xl font-bold mt-2">--</p>
           </div>
-          <div class="bg-purple/20 p-2 md:p-3 rounded-full">
-            <i class="fas fa-tags text-purple text-lg md:text-xl"></i>
+          <div class="bg-rose/20 p-2 md:p-3 rounded-full">
+            <i class="fas fa-running text-rose text-lg md:text-xl"></i>
           </div>
         </div>
         <div class="mt-3 md:mt-4">
-          <p class="text-xs md:text-sm text-gray-400">Ativas no período</p>
+          <p id="asics-aderencia" class="text-xs md:text-sm text-gray-400">Aderência: --</p>
         </div>
       </div>
 
-      <!-- Novo Card: Maior Atraso por Marca -->
+      <!-- Card FILA -->
       <div class="bg-gradient-to-r from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg card-hover">
         <div class="flex justify-between items-start">
           <div>
-            <h2 class="text-base md:text-lg font-semibold text-gray-300">Maior Atraso (Marca)</h2>
-            <p id="maior-atraso-marca" class="text-2xl md:text-3xl font-bold mt-2">--</p>
+            <h2 class="text-base md:text-lg font-semibold text-gray-300">FILA</h2>
+            <p id="fila-atraso" class="text-2xl md:text-3xl font-bold mt-2">--</p>
           </div>
-          <div class="bg-danger/20 p-2 md:p-3 rounded-full">
-            <i class="fas fa-arrow-up text-danger text-lg md:text-xl"></i>
+          <div class="bg-lime/20 p-2 md:p-3 rounded-full">
+            <i class="fas fa-running text-lime text-lg md:text-xl"></i>
           </div>
         </div>
         <div class="mt-3 md:mt-4">
-          <p id="maior-atraso-marca-nome" class="text-xs md:text-sm text-gray-400">--</p>
+          <p id="fila-aderencia" class="text-xs md:text-sm text-gray-400">Aderência: --</p>
         </div>
       </div>
 
-      <!-- Novo Card: Menor Atraso por Marca -->
+      <!-- Card UMBRO -->
       <div class="bg-gradient-to-r from-gray-800 to-dark rounded-2xl p-4 md:p-6 shadow-lg card-hover">
         <div class="flex justify-between items-start">
           <div>
-            <h2 class="text-base md:text-lg font-semibold text-gray-300">Menor Atraso (Marca)</h2>
-            <p id="menor-atraso-marca" class="text-2xl md:text-3xl font-bold mt-2">--</p>
+            <h2 class="text-base md:text-lg font-semibold text-gray-300">UMBRO</h2>
+            <p id="umbro-atraso" class="text-2xl md:text-3xl font-bold mt-2">--</p>
           </div>
-          <div class="bg-success/20 p-2 md:p-3 rounded-full">
-            <i class="fas fa-arrow-down text-success text-lg md:text-xl"></i>
+          <div class="bg-pink/20 p-2 md:p-3 rounded-full">
+            <i class="fas fa-running text-pink text-lg md:text-xl"></i>
           </div>
         </div>
         <div class="mt-3 md:mt-4">
-          <p id="menor-atraso-marca-nome" class="text-xs md:text-sm text-gray-400">--</p>
+          <p id="umbro-aderencia" class="text-xs md:text-sm text-gray-400">Aderência: --</p>
         </div>
       </div>
     </div>
@@ -535,7 +540,7 @@
             </div>
             <!-- Detalhamento por Marca -->
             <div class="mt-4" id="detalhes-marcas-atraso">
-              <!-- Detalhes das marcas serão inseridos aqui -->
+              <!-- Detalhes das marcas serão inseridas aqui -->
             </div>
           </div>
           
@@ -1550,83 +1555,151 @@
         return;
       }
       
-      // Calcular soma dos atrasos
-      const somaAtrasos = dadosFiltrados.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+      // Atualizar cards Qtd em Atraso e Aderência com dados da última semana
+      atualizarCardsUltimaSemana();
       
-      // Qtd em Atraso (soma dos dados filtrados)
-      const qtdAtrasoEl = document.getElementById('qtdAtraso');
-      qtdAtrasoEl.textContent = somaAtrasos.toLocaleString();
-      qtdAtrasoEl.classList.remove('animate-pulse');
-      
-      // Calcular tendência do atraso (comparando com todos os dados)
-      const somaAtrasosCompleto = dados.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
-      const diffAtraso = somaAtrasos - somaAtrasosCompleto;
-      const percentAtraso = somaAtrasosCompleto > 0 ? 
-        (diffAtraso / somaAtrasosCompleto * 100).toFixed(1) : 0;
-      
-      const atrasoTrendEl = document.getElementById('atraso-trend');
-      const atrasoChangeEl = document.getElementById('atraso-change');
-      
-      atrasoTrendEl.textContent = diffAtraso >= 0 ? 'Aumento' : 'Redução';
-      atrasoChangeEl.textContent = `${Math.abs(diffAtraso).toLocaleString()} (${Math.abs(percentAtraso)}%)`;
-      atrasoChangeEl.className = `text-xs md:text-sm ml-2 ${diffAtraso >= 0 ? 'text-danger' : 'text-success'}`;
-      
-      // Aderência (média dos dados filtrados)
-      const mediaAderencia = dadosFiltrados.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosFiltrados.length;
-      const aderenciaPercent = (mediaAderencia * 100).toFixed(1);
-      const aderenciaEl = document.getElementById('aderencia');
-      aderenciaEl.textContent = aderenciaPercent + "%";
-      aderenciaEl.classList.remove('animate-pulse');
-      
-      // Barra de progresso da aderência
-      document.getElementById('aderencia-bar').style.width = aderenciaPercent + '%';
-      
-      // Calcular tendência da aderência (comparando com todos os dados)
-      const mediaAderenciaCompleto = dados.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dados.length;
-      const diffAderencia = (mediaAderencia - mediaAderenciaCompleto) * 100;
-      const aderenciaTrendEl = document.getElementById('aderencia-trend');
-      const aderenciaChangeEl = document.getElementById('aderencia-change');
-      
-      aderenciaTrendEl.textContent = diffAderencia >= 0 ? 'Melhoria' : 'Queda';
-      aderenciaChangeEl.textContent = `${diffAderencia >= 0 ? '+' : ''}${diffAderencia.toFixed(1)}%`;
-      aderenciaChangeEl.className = `text-xs md:text-sm ml-2 ${diffAderencia >= 0 ? 'text-success' : 'text-danger'}`;
-      
-      // Total de Marcas (nos dados filtrados)
-      const marcasUnicas = [...new Set(dadosFiltrados.map(item => item.MARCA).filter(Boolean))];
-      document.getElementById('total-marcas').textContent = marcasUnicas.length;
-      
-      // Calcular Maior e Menor Atraso por Marca
-      calcularAtrasoPorMarca();
+      // Atualizar cards das marcas específicas (ASICS, FILA, UMBRO) com dados da última semana
+      atualizarCardsMarcasEspecificas();
     }
     
-    // Função para calcular maior e menor atraso por marca
-    function calcularAtrasoPorMarca() {
-      if (!dadosFiltrados || dadosFiltrados.length === 0) return;
+    // NOVA FUNÇÃO: Atualizar cards Qtd em Atraso e Aderência com dados da última semana
+    function atualizarCardsUltimaSemana() {
+      // Obter a última semana disponível nos dados filtrados
+      const semanas = [...new Set(dadosFiltrados.map(item => item.SEMANA).filter(Boolean))];
+      if (semanas.length === 0) return;
       
-      const marcas = [...new Set(dadosFiltrados.map(item => item.MARCA).filter(Boolean))];
-      
-      // Calcular atraso total por marca
-      const atrasoPorMarca = marcas.map(marca => {
-        const dadosMarca = dadosFiltrados.filter(item => item.MARCA === marca);
-        const atrasoTotal = dadosMarca.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
-        return {
-          marca: marca,
-          atraso: atrasoTotal
-        };
+      // Ordenar semanas para encontrar a mais recente
+      semanas.sort((a, b) => {
+        // Extrair números das semanas para ordenação
+        const numA = parseInt(a.replace(/\D/g, '')) || 0;
+        const numB = parseInt(b.replace(/\D/g, '')) || 0;
+        return numB - numA;
       });
       
-      // Ordenar por atraso (maior para menor)
-      atrasoPorMarca.sort((a, b) => b.atraso - a.atraso);
+      const ultimaSemana = semanas[0];
       
-      // Atualizar cards de maior e menor atraso
-      if (atrasoPorMarca.length > 0) {
-        // Maior atraso
-        document.getElementById('maior-atraso-marca').textContent = atrasoPorMarca[0].atraso.toLocaleString();
-        document.getElementById('maior-atraso-marca-nome').textContent = atrasoPorMarca[0].marca;
+      // Filtrar dados apenas da última semana
+      const dadosUltimaSemana = dadosFiltrados.filter(item => item.SEMANA === ultimaSemana);
+      
+      // Calcular atraso total da última semana
+      const atrasoUltimaSemana = dadosUltimaSemana.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+      
+      // Calcular aderência média da última semana
+      const aderenciaUltimaSemana = dadosUltimaSemana.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosUltimaSemana.length;
+      const aderenciaPercentUltimaSemana = (aderenciaUltimaSemana * 100).toFixed(1);
+      
+      // Atualizar card Qtd em Atraso
+      const qtdAtrasoEl = document.getElementById('qtdAtraso');
+      qtdAtrasoEl.textContent = atrasoUltimaSemana.toLocaleString();
+      qtdAtrasoEl.classList.remove('animate-pulse');
+      
+      // Atualizar informação da semana no card de atraso
+      document.getElementById('semana-atraso').textContent = `Semana: ${ultimaSemana}`;
+      
+      // Calcular tendência do atraso (comparando com a semana anterior, se disponível)
+      if (semanas.length > 1) {
+        const semanaAnterior = semanas[1];
+        const dadosSemanaAnterior = dadosFiltrados.filter(item => item.SEMANA === semanaAnterior);
+        const atrasoSemanaAnterior = dadosSemanaAnterior.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
         
-        // Menor atraso
-        document.getElementById('menor-atraso-marca').textContent = atrasoPorMarca[atrasoPorMarca.length - 1].atraso.toLocaleString();
-        document.getElementById('menor-atraso-marca-nome').textContent = atrasoPorMarca[atrasoPorMarca.length - 1].marca;
+        const diffAtraso = atrasoUltimaSemana - atrasoSemanaAnterior;
+        const percentAtraso = atrasoSemanaAnterior > 0 ? 
+          (diffAtraso / atrasoSemanaAnterior * 100).toFixed(1) : 0;
+        
+        const atrasoTrendEl = document.getElementById('atraso-trend');
+        const atrasoChangeEl = document.getElementById('atraso-change');
+        
+        atrasoTrendEl.textContent = diffAtraso >= 0 ? 'Aumento' : 'Redução';
+        atrasoChangeEl.textContent = `${Math.abs(diffAtraso).toLocaleString()} (${Math.abs(percentAtraso)}%)`;
+        atrasoChangeEl.className = `text-xs md:text-sm ml-2 ${diffAtraso >= 0 ? 'text-danger' : 'text-success'}`;
+      } else {
+        // Se não há semana anterior, limpar as informações de tendência
+        document.getElementById('atraso-trend').textContent = '';
+        document.getElementById('atraso-change').textContent = '';
+      }
+      
+      // Atualizar card Aderência
+      const aderenciaEl = document.getElementById('aderencia');
+      aderenciaEl.textContent = aderenciaPercentUltimaSemana + "%";
+      aderenciaEl.classList.remove('animate-pulse');
+      
+      // Atualizar informação da semana no card de aderência
+      document.getElementById('semana-aderencia').textContent = `Semana: ${ultimaSemana}`;
+      
+      // Barra de progresso da aderência
+      document.getElementById('aderencia-bar').style.width = aderenciaPercentUltimaSemana + '%';
+      
+      // Calcular tendência da aderência (comparando com a semana anterior, se disponível)
+      if (semanas.length > 1) {
+        const semanaAnterior = semanas[1];
+        const dadosSemanaAnterior = dadosFiltrados.filter(item => item.SEMANA === semanaAnterior);
+        const aderenciaSemanaAnterior = dadosSemanaAnterior.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosSemanaAnterior.length;
+        const aderenciaPercentSemanaAnterior = (aderenciaSemanaAnterior * 100).toFixed(1);
+        
+        const diffAderencia = (parseFloat(aderenciaPercentUltimaSemana) - parseFloat(aderenciaPercentSemanaAnterior)).toFixed(1);
+        const aderenciaTrendEl = document.getElementById('aderencia-trend');
+        const aderenciaChangeEl = document.getElementById('aderencia-change');
+        
+        aderenciaTrendEl.textContent = diffAderencia >= 0 ? 'Melhoria' : 'Queda';
+        aderenciaChangeEl.textContent = `${diffAderencia >= 0 ? '+' : ''}${diffAderencia}%`;
+        aderenciaChangeEl.className = `text-xs md:text-sm ml-2 ${diffAderencia >= 0 ? 'text-success' : 'text-danger'}`;
+      } else {
+        // Se não há semana anterior, limpar as informações de tendência
+        document.getElementById('aderencia-trend').textContent = '';
+        document.getElementById('aderencia-change').textContent = '';
+      }
+    }
+    
+    // Função para atualizar os cards das marcas específicas (ASICS, FILA, UMBRO)
+    function atualizarCardsMarcasEspecificas() {
+      if (!dadosFiltrados || dadosFiltrados.length === 0) return;
+      
+      // Obter a última semana disponível nos dados filtrados
+      const semanas = [...new Set(dadosFiltrados.map(item => item.SEMANA).filter(Boolean))];
+      if (semanas.length === 0) return;
+      
+      // Ordenar semanas para encontrar a mais recente
+      semanas.sort((a, b) => {
+        // Extrair números das semanas para ordenação
+        const numA = parseInt(a.replace(/\D/g, '')) || 0;
+        const numB = parseInt(b.replace(/\D/g, '')) || 0;
+        return numB - numA;
+      });
+      
+      const ultimaSemana = semanas[0];
+      
+      // Filtrar dados apenas da última semana
+      const dadosUltimaSemana = dadosFiltrados.filter(item => item.SEMANA === ultimaSemana);
+      
+      // Atualizar card ASICS
+      atualizarCardMarca('ASICS', dadosUltimaSemana);
+      
+      // Atualizar card FILA
+      atualizarCardMarca('FILA', dadosUltimaSemana);
+      
+      // Atualizar card UMBRO
+      atualizarCardMarca('UMBRO', dadosUltimaSemana);
+    }
+    
+    // Função auxiliar para atualizar um card de marca específica
+    function atualizarCardMarca(marca, dadosSemana) {
+      const dadosMarca = dadosSemana.filter(item => item.MARCA === marca);
+      
+      if (dadosMarca.length > 0) {
+        // Calcular atraso total para a marca
+        const atrasoTotal = dadosMarca.reduce((sum, item) => sum + (item['QTD ATRASO'] || 0), 0);
+        
+        // Calcular aderência média para a marca
+        const aderenciaMedia = dadosMarca.reduce((sum, item) => sum + (item['ADERÊNCIA'] || 0), 0) / dadosMarca.length;
+        const aderenciaPercent = (aderenciaMedia * 100).toFixed(1);
+        
+        // Atualizar elementos do card
+        document.getElementById(`${marca.toLowerCase()}-atraso`).textContent = atrasoTotal.toLocaleString();
+        document.getElementById(`${marca.toLowerCase()}-aderencia`).textContent = `Aderência: ${aderenciaPercent}%`;
+      } else {
+        // Se não houver dados para a marca na última semana
+        document.getElementById(`${marca.toLowerCase()}-atraso`).textContent = '0';
+        document.getElementById(`${marca.toLowerCase()}-aderencia`).textContent = 'Aderência: N/A';
       }
     }
     
@@ -2322,6 +2395,25 @@
           "QTD_ATRASO": 900, 
           "ADERÊNCIA": 0.87, 
           "DATA": "23/07/25" 
+        },
+        // Adicionando dados para ASICS e FILA
+        { 
+          SEMANA: "SEMANA 31", 
+          MARCA: "ASICS", 
+          "CENTRO_DE_TRABALHO": "CT-07", 
+          RECURSO: "Montagem/Fab 1 Grp 4 (1122)", 
+          "QTD_ATRASO": 1300, 
+          "ADERÊNCIA": 0.82, 
+          "DATA": "06/08/25" 
+        },
+        { 
+          SEMANA: "SEMANA 31", 
+          MARCA: "FILA", 
+          "CENTRO_DE_TRABALHO": "CT-08", 
+          RECURSO: "Montagem/Fab 2 Grp 4 (1123)", 
+          "QTD_ATRASO": 950, 
+          "ADERÊNCIA": 0.89, 
+          "DATA": "06/08/25" 
         }
       ];
       
@@ -2402,5 +2494,3 @@
  </body>
 
 </html>
-
-
